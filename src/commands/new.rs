@@ -64,6 +64,7 @@ pub fn run(name: &str, description: Option<&str>, language: &str, no_git: bool) 
     fs::create_dir_all(package_dir.join("skills/claude-code"))?;
     fs::create_dir_all(package_dir.join("skills/cursor"))?;
     fs::create_dir_all(package_dir.join("skills/windsurf"))?;
+    fs::create_dir_all(package_dir.join("skills/continue"))?;
 
     // Generate files from templates
     let name_pascal = to_pascal_case(name);
@@ -135,6 +136,18 @@ pub fn run(name: &str, description: Option<&str>, language: &str, no_git: bool) 
     )?;
     println!(
         "  {} Generated skills/windsurf/{}.md",
+        "✓".green(),
+        name
+    );
+
+    // Continue skill
+    let continue_skill = substitute_template(TEMPLATE_CONTINUE, name, description, &name_pascal, &name_title, &description_lower);
+    fs::write(
+        package_dir.join(format!("skills/continue/{}.yaml", name)),
+        continue_skill,
+    )?;
+    println!(
+        "  {} Generated skills/continue/{}.yaml",
         "✓".green(),
         name
     );
