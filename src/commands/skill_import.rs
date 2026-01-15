@@ -1976,10 +1976,46 @@ struct ClaudeCodeFrontmatter {
     name: Option<String>,
     description: Option<String>,
     version: Option<String>,
+    author: Option<String>,
     #[serde(default)]
-    tools: Vec<String>,
+    tools: Vec<ClaudeCodeTool>,
     #[serde(default)]
-    triggers: Vec<String>,
+    triggers: ClaudeCodeTriggers,
+}
+
+/// Tool definition - supports both string format ("gmail.inbox") and structured format
+#[derive(Debug, Deserialize, Clone)]
+#[serde(untagged)]
+enum ClaudeCodeTool {
+    /// Simple string format: "gmail.inbox" or "gmail"
+    Simple(String),
+    /// Structured format with daemon and methods
+    Structured {
+        daemon: String,
+        #[serde(default)]
+        methods: Vec<String>,
+    },
+}
+
+/// Trigger definition - supports both array and structured format
+#[derive(Debug, Deserialize, Clone)]
+#[serde(untagged)]
+enum ClaudeCodeTriggers {
+    /// Simple array of strings
+    Simple(Vec<String>),
+    /// Structured format with keywords and patterns
+    Structured {
+        #[serde(default)]
+        keywords: Vec<String>,
+        #[serde(default)]
+        patterns: Vec<String>,
+    },
+}
+
+impl Default for ClaudeCodeTriggers {
+    fn default() -> Self {
+        Self::Simple(Vec::new())
+    }
 }
 
 /// Parse a Claude Code SKILL.md file
@@ -1995,16 +2031,18 @@ fn parse_claude_code(path: &Path, content: &str) -> Result<ImportedSkill> {
             name: None,
             description: None,
             version: None,
+            author: None,
             tools: vec![],
-            triggers: vec![],
+            triggers: ClaudeCodeTriggers::Simple(vec![]),
         })
     } else {
         ClaudeCodeFrontmatter {
             name: None,
             description: None,
             version: None,
+            author: None,
             tools: vec![],
-            triggers: vec![],
+            triggers: ClaudeCodeTriggers::Simple(vec![]),
         }
     };
 
@@ -2047,17 +2085,48 @@ fn parse_claude_code(path: &Path, content: &str) -> Result<ImportedSkill> {
             .with_note("Default version - please update")
     };
 
-    // Extract daemons from tools list
-    let daemons = extract_daemons_from_tools(&fm.tools, &body);
+    // Convert ClaudeCodeTool to strings for extract_daemons_from_tools
+    let tools_strings: Vec<String> = fm.tools.iter().flat_map(|tool| {
+        match tool {
+            ClaudeCodeTool::Simple(s) => vec![s.clone()],
+            ClaudeCodeTool::Structured { daemon, methods } => {
+                if methods.is_empty() {
+                    vec![daemon.clone()]
+                } else {
+                    methods.iter().map(|m| format!("{}.{}", daemon, m)).collect()
+                }
+            }
+        }
+    }).collect();
+
+    // Extract daemons from tools list (frontmatter + body)
+    let daemons = extract_daemons_from_tools(&tools_strings, &body);
+
+    // Convert ClaudeCodeTriggers to strings for extract_triggers
+    let trigger_strings: Vec<String> = match &fm.triggers {
+        ClaudeCodeTriggers::Simple(v) => v.clone(),
+        ClaudeCodeTriggers::Structured { keywords, patterns } => {
+            let mut all = keywords.clone();
+            all.extend(patterns.clone());
+            all
+        }
+    };
 
     // Extract triggers
-    let triggers = extract_triggers(&fm.triggers, &body);
+    let triggers = extract_triggers(&trigger_strings, &body);
+
+    // Extract author from frontmatter
+    let author = fm.author.map(|a| ImportedAuthor {
+        name: ImportedField::high(a, FieldSource::Frontmatter),
+        email: ImportedField::low(None, FieldSource::Default),
+        url: ImportedField::low(None, FieldSource::Default),
+    });
 
     Ok(ImportedSkill {
         name,
         version,
         description,
-        author: None,
+        author,
         daemons,
         instructions_content: ImportedField::high(body, FieldSource::Content),
         triggers,
