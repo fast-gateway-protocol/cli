@@ -154,10 +154,7 @@ impl App {
             if service.status == ServiceStatus::Stopped || service.status == ServiceStatus::Error {
                 match fgp_daemon::lifecycle::start_service(&service.name) {
                     Ok(()) => {
-                        self.set_message(
-                            format!("Started {}", service.name),
-                            MessageType::Success,
-                        );
+                        self.set_message(format!("Started {}", service.name), MessageType::Success);
                         self.refresh_services();
                     }
                     Err(e) => {
@@ -174,14 +171,12 @@ impl App {
     /// Stop the selected service.
     pub fn stop_selected(&mut self) {
         if let Some(service) = self.selected_service().cloned() {
-            if service.status == ServiceStatus::Running || service.status == ServiceStatus::Unhealthy
+            if service.status == ServiceStatus::Running
+                || service.status == ServiceStatus::Unhealthy
             {
                 match fgp_daemon::lifecycle::stop_service(&service.name) {
                     Ok(()) => {
-                        self.set_message(
-                            format!("Stopped {}", service.name),
-                            MessageType::Success,
-                        );
+                        self.set_message(format!("Stopped {}", service.name), MessageType::Success);
                         self.refresh_services();
                     }
                     Err(e) => {

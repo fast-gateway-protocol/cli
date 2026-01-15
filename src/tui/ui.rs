@@ -92,12 +92,24 @@ fn draw_service_table(frame: &mut Frame, area: Rect, app: &App) {
 
             // Status styling
             let (status_color, status_text) = match service.status {
-                ServiceStatus::Running => (Color::Green, format!("{} running", service.status.symbol())),
-                ServiceStatus::Stopped => (Color::DarkGray, format!("{} stopped", service.status.symbol())),
-                ServiceStatus::Unhealthy => (Color::Yellow, format!("{} unhealthy", service.status.symbol())),
+                ServiceStatus::Running => {
+                    (Color::Green, format!("{} running", service.status.symbol()))
+                }
+                ServiceStatus::Stopped => (
+                    Color::DarkGray,
+                    format!("{} stopped", service.status.symbol()),
+                ),
+                ServiceStatus::Unhealthy => (
+                    Color::Yellow,
+                    format!("{} unhealthy", service.status.symbol()),
+                ),
                 ServiceStatus::Error => (Color::Red, format!("{} error", service.status.symbol())),
-                ServiceStatus::Starting => (Color::Blue, format!("{} starting", service.status.symbol())),
-                ServiceStatus::Stopping => (Color::Blue, format!("{} stopping", service.status.symbol())),
+                ServiceStatus::Starting => {
+                    (Color::Blue, format!("{} starting", service.status.symbol()))
+                }
+                ServiceStatus::Stopping => {
+                    (Color::Blue, format!("{} stopping", service.status.symbol()))
+                }
             };
 
             // Version and uptime
