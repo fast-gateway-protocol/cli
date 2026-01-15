@@ -7,6 +7,7 @@ use std::path::Path;
 /// Known AI agent configurations.
 const AGENT_PATHS: &[(&str, &str, &str)] = &[
     ("Claude Code", "~/.claude/skills", "SKILL.md files"),
+    ("Codex", "~/.codex/skills", "SKILL.md files"),
     ("Cursor", "~/.cursor", ".mdc rules"),
     ("Windsurf", "~/.windsurf", "Workflow files"),
     (
