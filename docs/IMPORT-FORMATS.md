@@ -229,9 +229,9 @@ Daemons are extracted from markdown bullet patterns:
 
 ## Gemini (gemini-extension.json)
 
-**Fidelity: ~75%** | **Pattern: `gemini-extension.json`**
+**Fidelity: ~85%** | **Quality Grade: B (88%)** | **Pattern: `gemini-extension.json`**
 
-JSON manifest with structured capability definitions.
+JSON manifest with structured capability definitions. Daemons inferred from capability names + trigger keywords.
 
 ### Structure
 
@@ -240,6 +240,7 @@ JSON manifest with structured capability definitions.
   "name": "Calendar Assistant",
   "version": "2.1.0",
   "description": "Manage Google Calendar",
+  "author": "Developer Name",
   "capabilities": [
     {
       "name": "list",
@@ -252,7 +253,8 @@ JSON manifest with structured capability definitions.
   ],
   "triggers": {
     "keywords": ["calendar", "schedule", "meeting"]
-  }
+  },
+  "instructions": "Help users manage their calendar..."
 }
 ```
 
@@ -263,15 +265,24 @@ JSON manifest with structured capability definitions.
 | name | `name` field | High |
 | description | `description` field | High |
 | version | `version` field | High |
-| daemons | Inferred from capabilities | Medium |
+| author | `author` field | High |
+| daemons | Inferred from capabilities + triggers | Medium |
 | methods | `capabilities[].name` | Medium |
 | triggers | `triggers` object | High |
 | instructions | `instructions` field | High |
 
+### Daemon Inference
+
+The parser uses trigger keywords to infer daemons from capability names:
+- `inbox`, `send`, `search` + "gmail" trigger → daemon: `gmail`
+- `list`, `create`, `update` + "calendar" trigger → daemon: `calendar`
+
+This allows Gemini extensions with standalone method names to map to FGP daemons.
+
 ### Limitations
 
-- Capabilities may not map directly to FGP methods
-- Extension config not all recoverable
+- Requires trigger keywords that match daemon names for inference
+- Extension config not fully recoverable
 
 ---
 
@@ -463,58 +474,63 @@ importing to FGP skill.yaml, and measuring what data was preserved.
 
 | Format | Quality Grade | Overall Fidelity | Daemon Recovery | Best Use Case |
 |--------|---------------|------------------|-----------------|---------------|
+| **Gemini** | 🔵 B (88%) | ~85% | ✅ Full | Extensions with trigger keywords |
 | **Windsurf** | 🔵 B (87%) | ~85% | ✅ Full | Cascades with capabilities |
 | **Claude Code** | 🔵 B (82%) | ~65% | ⚠️ Partial | Full skill definitions with frontmatter |
+| **Cursor** | 🟡 C (76%) | ~70% | ✅ Full | Project-level coding guidelines |
 | **Zed** | 🟡 C (75%) | ~70% | ✅ Full | Context rules with bullet lists |
 | **Codex** | 🟡 C (75%) | ~70% | ✅ Full | Tool-centric configurations |
-| **Cursor** | 🟡 C (76%) | ~70% | ✅ Full | Project-level coding guidelines |
 | **MCP** | 🔴 F (28%) | ~25% | ❌ None | API/tool schema definitions |
 
 ### Field Recovery by Format
 
-| Field | Windsurf | Claude Code | Zed | Codex | Cursor | MCP |
-|-------|----------|-------------|-----|-------|--------|-----|
-| **name** | ✅ High | ✅ High | ⚠️ Medium | ✅ High | ⚠️ Medium | ✅ High |
-| **version** | ✅ High | ✅ High | ❌ Default | ❌ Default | ❌ Default | ❌ Default |
-| **description** | ✅ High | ✅ High | ⚠️ Medium | ✅ High | ⚠️ Medium | ✅ High |
-| **author** | ✅ High | ⚠️ Partial | ❌ None | ❌ None | ❌ None | ❌ None |
-| **instructions** | ✅ High | ✅ High | ✅ High | ✅ High | ✅ High | ⚠️ Medium |
-| **daemons** | ✅ Full | ⚠️ Medium (33%) | ✅ Full | ✅ Full | ✅ Full | ❌ None |
-| **triggers** | ✅ High | ⚠️ Medium | ⚠️ Low | ❌ None | ❌ None | ❌ None |
-| **workflows** | ❌ N/A | ❌ Lost | ❌ N/A | ❌ N/A | ❌ N/A | ❌ N/A |
-| **config** | ❌ N/A | ❌ Lost | ❌ N/A | ❌ N/A | ❌ N/A | ❌ N/A |
-| **auth** | ⚠️ Enriched | ⚠️ Enriched | ⚠️ Enriched | ⚠️ Enriched | ⚠️ Enriched | ⚠️ Enriched |
+| Field | Gemini | Windsurf | Claude Code | Zed | Codex | Cursor | MCP |
+|-------|--------|----------|-------------|-----|-------|--------|-----|
+| **name** | ✅ High | ✅ High | ✅ High | ⚠️ Medium | ✅ High | ⚠️ Medium | ✅ High |
+| **version** | ✅ High | ✅ High | ✅ High | ❌ Default | ❌ Default | ❌ Default | ❌ Default |
+| **description** | ✅ High | ✅ High | ✅ High | ⚠️ Medium | ✅ High | ⚠️ Medium | ✅ High |
+| **author** | ✅ High | ✅ High | ⚠️ Partial | ❌ None | ❌ None | ❌ None | ❌ None |
+| **instructions** | ✅ High | ✅ High | ✅ High | ✅ High | ✅ High | ✅ High | ⚠️ Medium |
+| **daemons** | ✅ Full | ✅ Full | ⚠️ Medium (33%) | ✅ Full | ✅ Full | ✅ Full | ❌ None |
+| **triggers** | ✅ High | ✅ High | ⚠️ Medium | ⚠️ Low | ❌ None | ❌ None | ❌ None |
+| **workflows** | ❌ N/A | ❌ N/A | ❌ Lost | ❌ N/A | ❌ N/A | ❌ N/A | ❌ N/A |
+| **config** | ❌ N/A | ❌ N/A | ❌ Lost | ❌ N/A | ❌ N/A | ❌ N/A | ❌ N/A |
+| **auth** | ⚠️ Enriched | ⚠️ Enriched | ⚠️ Enriched | ⚠️ Enriched | ⚠️ Enriched | ⚠️ Enriched | ⚠️ Enriched |
 
 ### Key Insights
 
-1. **Windsurf is the highest-fidelity format** because its `capabilities` structure
+1. **Gemini is now the highest-fidelity format** (88%) thanks to daemon inference from
+   trigger keywords combined with method-to-daemon hint mappings.
+
+2. **Windsurf remains excellent** (87%) because its `capabilities` structure
    maps directly to FGP's daemon/method model, plus it has explicit triggers and author.
 
-2. **Codex, Windsurf, and Zed all achieve full daemon recovery** because they use
-   explicit `daemon.method` patterns that parse cleanly.
+3. **Six formats now achieve full daemon recovery**: Gemini, Windsurf, Zed, Codex, and
+   Cursor all use explicit or inferred `daemon.method` patterns.
 
-3. **Zed format improved significantly** (F→C) through markdown bullet list extraction
+4. **Zed format improved significantly** (F→C) through markdown bullet list extraction
    and role name parsing from intro lines like "specialized in X".
 
-4. **Cursor now achieves full daemon recovery** (F→C, 76%) by sharing the markdown
+5. **Cursor now achieves full daemon recovery** (F→C, 76%) by sharing the markdown
    bullet extraction logic added for Zed. Files with `daemon.method` patterns in
    bullet lists now import reliably.
 
-5. **Claude Code scores well overall** but loses some daemon methods because they're
+6. **Claude Code scores well overall** but loses some daemon methods because they're
    embedded in markdown documentation rather than structured data.
 
-6. **Registry enrichment helps all formats** by recovering auth requirements and
+7. **Registry enrichment helps all formats** by recovering auth requirements and
    method details when daemons are recognized in the FGP daemon registry.
 
-7. **Aider format remains documentation-centric** - excellent for preserving
+8. **Aider format remains documentation-centric** - excellent for preserving
    instructions but lacks structural metadata.
 
-8. **MCP format is API-focused** - preserves tool schemas but doesn't map
+9. **MCP format is API-focused** - preserves tool schemas but doesn't map
    naturally to FGP's daemon model.
 
 ### Recommendations
 
-- **Import from Windsurf** when available - highest overall fidelity (87%)
+- **Import from Gemini** when available - highest overall fidelity (88%)
+- **Import from Windsurf** for Cascade files - excellent fidelity (87%)
 - **Import from Zed** for context rules with `daemon.method` bullet lists
 - **Import from Claude Code** for skills with rich markdown documentation
 - **Import from Codex** when you need reliable daemon/method recovery
