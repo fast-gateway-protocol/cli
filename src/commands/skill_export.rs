@@ -70,9 +70,11 @@ pub fn export(target: &str, skill: &str, output: Option<&str>) -> Result<()> {
         "mcp" => export_mcp(&manifest, &skill_dir, &output_dir),
         "windsurf" => export_windsurf(&manifest, &skill_dir, &output_dir),
         "zed" => export_zed(&manifest, &skill_dir, &output_dir),
+        "gemini" => export_gemini(&manifest, &skill_dir, &output_dir),
+        "aider" => export_aider(&manifest, &skill_dir, &output_dir),
         _ => bail!(
             "Unknown export target: {}\n\
-             Valid targets: claude-code, cursor, codex, mcp, windsurf, zed",
+             Valid targets: claude-code, cursor, codex, mcp, windsurf, zed, gemini, aider",
             target
         ),
     }
@@ -456,6 +458,167 @@ fn export_zed(manifest: &SkillManifest, skill_dir: &Path, output_dir: &Path) -> 
     println!("{}:", "Usage".cyan().bold());
     println!("  1. Copy to project root as .rules");
     println!("  2. Or add to Zed's Rules Library (Cmd+Alt+L)");
+
+    Ok(())
+}
+
+/// Export for Gemini CLI (generates extension directory with gemini-extension.json + GEMINI.md).
+fn export_gemini(manifest: &SkillManifest, skill_dir: &Path, output_dir: &Path) -> Result<()> {
+    // Create extension directory
+    let ext_dir = output_dir.join(&manifest.name);
+    fs::create_dir_all(&ext_dir)?;
+
+    // Generate gemini-extension.json manifest
+    let extension_json = serde_json::json!({
+        "name": manifest.name,
+        "version": manifest.version,
+        "contextFileName": "GEMINI.md"
+    });
+    let manifest_path = ext_dir.join("gemini-extension.json");
+    fs::write(&manifest_path, serde_json::to_string_pretty(&extension_json)?)?;
+
+    // Generate GEMINI.md context file
+    let mut gemini_md = String::new();
+    gemini_md.push_str(&format!("# {}\n\n", manifest.name));
+    gemini_md.push_str(&format!("{}\n\n", manifest.description));
+
+    // Read gemini-specific or core instructions
+    let gemini_instructions = manifest
+        .instructions
+        .as_ref()
+        .and_then(|i| i.core.as_ref());
+
+    if let Some(instruction_path) = gemini_instructions {
+        let full_path = skill_dir.join(instruction_path);
+        if full_path.exists() {
+            let instructions = fs::read_to_string(&full_path)?;
+            gemini_md.push_str(&instructions);
+        }
+    } else {
+        // Generate default context
+        if let Some(ref triggers) = manifest.triggers {
+            gemini_md.push_str("## When to Use\n\n");
+            gemini_md.push_str("Activate this skill when the user:\n");
+            for keyword in &triggers.keywords {
+                gemini_md.push_str(&format!("- Mentions \"{}\"\n", keyword));
+            }
+            for pattern in &triggers.patterns {
+                gemini_md.push_str(&format!("- Asks to \"{}\"\n", pattern));
+            }
+            gemini_md.push_str("\n");
+        }
+
+        // Add FGP daemon usage
+        if !manifest.daemons.is_empty() {
+            gemini_md.push_str("## FGP Commands\n\n");
+            gemini_md.push_str("Use Fast Gateway Protocol for high-performance execution:\n\n");
+            gemini_md.push_str("```bash\n");
+            for daemon in &manifest.daemons {
+                for method in &daemon.methods {
+                    gemini_md.push_str(&format!(
+                        "fgp call {}.{} -p '{{}}'\n",
+                        daemon.name, method
+                    ));
+                }
+            }
+            gemini_md.push_str("```\n");
+        }
+    }
+
+    let gemini_md_path = ext_dir.join("GEMINI.md");
+    fs::write(&gemini_md_path, &gemini_md)?;
+
+    println!(
+        "{} Exported Gemini extension to: {}",
+        "✓".green().bold(),
+        ext_dir.display()
+    );
+
+    // Provide usage hints
+    println!();
+    println!("{}:", "Usage".cyan().bold());
+    println!("  1. Copy directory to ~/.gemini/extensions/");
+    println!("  2. Or run: gemini extensions install {}", ext_dir.display());
+
+    Ok(())
+}
+
+/// Export for Aider (generates CONVENTIONS.md).
+fn export_aider(manifest: &SkillManifest, skill_dir: &Path, output_dir: &Path) -> Result<()> {
+    let mut conventions = String::new();
+
+    conventions.push_str(&format!("# {} Conventions\n\n", manifest.name));
+    conventions.push_str(&format!("{}\n\n", manifest.description));
+
+    // Read aider-specific or core instructions
+    let aider_instructions = manifest
+        .instructions
+        .as_ref()
+        .and_then(|i| i.core.as_ref());
+
+    if let Some(instruction_path) = aider_instructions {
+        let full_path = skill_dir.join(instruction_path);
+        if full_path.exists() {
+            let instructions = fs::read_to_string(&full_path)?;
+            conventions.push_str(&instructions);
+        }
+    } else {
+        // Generate default conventions
+        conventions.push_str("## Guidelines\n\n");
+
+        if let Some(ref triggers) = manifest.triggers {
+            conventions.push_str("When working with this skill:\n");
+            for keyword in &triggers.keywords {
+                conventions.push_str(&format!("- Use when dealing with \"{}\"\n", keyword));
+            }
+            conventions.push_str("\n");
+        }
+
+        // Add FGP daemon usage
+        if !manifest.daemons.is_empty() {
+            conventions.push_str("## FGP Integration\n\n");
+            conventions.push_str("This project uses Fast Gateway Protocol daemons for performance.\n\n");
+            conventions.push_str("### Available Commands\n\n");
+            for daemon in &manifest.daemons {
+                let optional = if daemon.optional { " (optional)" } else { "" };
+                conventions.push_str(&format!("**{}**{}:\n", daemon.name, optional));
+                for method in &daemon.methods {
+                    conventions.push_str(&format!(
+                        "- `fgp call {}.{} -p '{{\"param\": \"value\"}}'`\n",
+                        daemon.name, method
+                    ));
+                }
+                conventions.push_str("\n");
+            }
+        }
+
+        // Add workflow info
+        if !manifest.workflows.is_empty() {
+            conventions.push_str("## Workflows\n\n");
+            for (name, workflow) in &manifest.workflows {
+                let desc = workflow.description.as_deref().unwrap_or("");
+                conventions.push_str(&format!("- **{}**: {}\n", name, desc));
+            }
+            conventions.push_str("\n");
+        }
+    }
+
+    // Write CONVENTIONS.md
+    let conventions_path = output_dir.join(format!("{}.CONVENTIONS.md", manifest.name));
+    fs::write(&conventions_path, &conventions)?;
+
+    println!(
+        "{} Exported Aider conventions to: {}",
+        "✓".green().bold(),
+        conventions_path.display()
+    );
+
+    // Provide usage hints
+    println!();
+    println!("{}:", "Usage".cyan().bold());
+    println!("  1. Rename to CONVENTIONS.md in project root");
+    println!("  2. Run: aider --read CONVENTIONS.md");
+    println!("  3. Or add to .aider.conf.yml: read: CONVENTIONS.md");
 
     Ok(())
 }
