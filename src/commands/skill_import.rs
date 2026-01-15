@@ -2813,6 +2813,7 @@ struct GeminiManifest {
     display_name: Option<String>,
     description: Option<String>,
     version: Option<String>,
+    author: Option<String>,
     #[serde(default)]
     capabilities: Vec<GeminiCapability>,
     #[serde(default)]
@@ -2899,8 +2900,50 @@ fn parse_gemini(path: &Path, content: &str) -> Result<ImportedSkill> {
         )
     };
 
-    // Extract daemons from capabilities (if they look like FGP tools)
+    // Extract daemons from capabilities
+    // Strategy:
+    // 1. If capability name is "daemon.method" format, use that directly
+    // 2. Otherwise, try to infer daemon from trigger keywords (e.g., "gmail", "calendar")
+    // 3. Match capability names against common method patterns
     let mut daemons: HashMap<String, Vec<ImportedField<String>>> = HashMap::new();
+
+    // Collect potential daemon names from trigger keywords
+    let potential_daemons: Vec<String> = manifest.triggers.keywords.iter()
+        .filter(|kw| is_valid_daemon_name(kw))
+        .cloned()
+        .collect();
+
+    // Common method name → daemon mappings for inference
+    let method_daemon_hints: HashMap<&str, &str> = [
+        // Gmail methods
+        ("inbox", "gmail"),
+        ("send", "gmail"),
+        ("search", "gmail"),
+        ("read", "gmail"),
+        ("thread", "gmail"),
+        ("unread", "gmail"),
+        // Calendar methods
+        ("list", "calendar"),
+        ("create", "calendar"),
+        ("update", "calendar"),
+        ("delete", "calendar"),
+        ("upcoming", "calendar"),
+        ("today", "calendar"),
+        ("free_slots", "calendar"),
+        // GitHub methods
+        ("issues", "github"),
+        ("prs", "github"),
+        ("repos", "github"),
+        ("commits", "github"),
+        // Browser methods
+        ("open", "browser"),
+        ("navigate", "browser"),
+        ("click", "browser"),
+        ("fill", "browser"),
+        ("screenshot", "browser"),
+        ("snapshot", "browser"),
+    ].into_iter().collect();
+
     for cap in &manifest.capabilities {
         if let Some(ref cap_name) = cap.name {
             // Check if it looks like "daemon.method"
@@ -2913,6 +2956,24 @@ fn parse_gemini(path: &Path, content: &str) -> Result<ImportedSkill> {
                             method_name.to_string(),
                             FieldSource::Frontmatter,
                         ));
+                    continue;
+                }
+            }
+
+            // Try to infer daemon from method name hints
+            let method_lower = cap_name.to_lowercase();
+            if let Some(&daemon_hint) = method_daemon_hints.get(method_lower.as_str()) {
+                // Verify the hint matches a potential daemon from triggers
+                if potential_daemons.iter().any(|d| d == daemon_hint ||
+                    (daemon_hint == "gmail" && d == "email") ||
+                    (daemon_hint == "calendar" && (d == "schedule" || d == "meeting"))) {
+                    daemons
+                        .entry(daemon_hint.to_string())
+                        .or_default()
+                        .push(ImportedField::medium(
+                            cap_name.clone(),
+                            FieldSource::MethodExtraction,
+                        ).with_note("Daemon inferred from trigger keywords"));
                 }
             }
         }
@@ -2921,7 +2982,8 @@ fn parse_gemini(path: &Path, content: &str) -> Result<ImportedSkill> {
     let daemons_vec: Vec<ImportedDaemon> = daemons
         .into_iter()
         .map(|(name, methods)| ImportedDaemon {
-            name: ImportedField::high(name, FieldSource::Frontmatter),
+            name: ImportedField::medium(name, FieldSource::MethodExtraction)
+                .with_note("Inferred from capabilities and triggers"),
             version: ImportedField::low(
                 Some(">=1.0.0".to_string()),
                 FieldSource::Default,
@@ -2940,11 +3002,18 @@ fn parse_gemini(path: &Path, content: &str) -> Result<ImportedSkill> {
         triggers.patterns.push(ImportedField::high(pat, FieldSource::Frontmatter));
     }
 
+    // Extract author
+    let author = manifest.author.map(|a| ImportedAuthor {
+        name: ImportedField::high(a, FieldSource::Frontmatter),
+        email: ImportedField::low(None, FieldSource::Default),
+        url: ImportedField::low(None, FieldSource::Default),
+    });
+
     Ok(ImportedSkill {
         name,
         version,
         description,
-        author: None,
+        author,
         daemons: daemons_vec,
         instructions_content,
         triggers,
