@@ -94,24 +94,34 @@ fn follow_logs(path: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-/// Detect log level from a line using single-pass approach.
+/// Detect log level from a line using case-insensitive search.
 /// Returns the detected level or None for INFO/unknown.
 fn detect_log_level(line: &str) -> Option<&'static str> {
-    // Check for common log level patterns in order of severity
-    // Use byte-level search for efficiency
-    let line_upper = line.to_uppercase();
+    // Use case-insensitive byte search to avoid allocation
+    let bytes = line.as_bytes();
 
-    if line_upper.contains("ERROR") {
+    // Check for common log level patterns in order of severity
+    if contains_case_insensitive(bytes, b"ERROR") {
         Some("ERROR")
-    } else if line_upper.contains("WARN") {
+    } else if contains_case_insensitive(bytes, b"WARN") {
         Some("WARN")
-    } else if line_upper.contains("DEBUG") {
+    } else if contains_case_insensitive(bytes, b"DEBUG") {
         Some("DEBUG")
-    } else if line_upper.contains("TRACE") {
+    } else if contains_case_insensitive(bytes, b"TRACE") {
         Some("TRACE")
     } else {
         None // INFO or other
     }
+}
+
+/// Case-insensitive byte search without allocation.
+fn contains_case_insensitive(haystack: &[u8], needle: &[u8]) -> bool {
+    if needle.is_empty() || haystack.len() < needle.len() {
+        return needle.is_empty();
+    }
+    haystack
+        .windows(needle.len())
+        .any(|window| window.eq_ignore_ascii_case(needle))
 }
 
 /// Print a log line with color-coding by level.

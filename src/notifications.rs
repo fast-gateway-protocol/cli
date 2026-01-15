@@ -3,10 +3,13 @@
 //! Provides cross-platform notification support for FGP alerts.
 
 /// Escape a string for use in AppleScript string literals.
-/// Handles backslashes and double quotes which have special meaning in AppleScript.
+/// Handles backslashes, double quotes, and newlines which have special meaning in AppleScript.
 #[cfg(target_os = "macos")]
 fn escape_applescript_string(s: &str) -> String {
-    s.replace('\\', "\\\\").replace('"', "\\\"")
+    s.replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', " ")
+        .replace('\r', " ")
 }
 
 /// Send a system notification.
