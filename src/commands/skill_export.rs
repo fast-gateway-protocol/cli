@@ -24,20 +24,21 @@ pub fn export(target: &str, skill: &str, output: Option<&str>) -> Result<()> {
 
     // Load the skill manifest
     let skill_path = Path::new(skill);
-    let skill_dir = if skill_path.is_dir() {
-        skill_path.to_path_buf()
-    } else {
-        skill_path.parent().unwrap_or(Path::new(".")).to_path_buf()
-    };
-
-    let manifest_path = if skill_path.is_dir() {
-        skill_path.join("skill.yaml")
+    let (skill_dir, manifest_path) = if skill_path.is_dir() {
+        (skill_path.to_path_buf(), skill_path.join("skill.yaml"))
     } else if skill_path.extension().map(|e| e == "yaml" || e == "yml").unwrap_or(false) {
-        skill_path.to_path_buf()
+        (
+            skill_path.parent().unwrap_or(Path::new(".")).to_path_buf(),
+            skill_path.to_path_buf(),
+        )
     } else {
         // Assume it's a skill name, look in installed skills
         let installed_path = shellexpand::tilde("~/.fgp/skills").to_string();
-        Path::new(&installed_path).join(skill).join("skill.yaml")
+        let installed_skill_dir = Path::new(&installed_path).join(skill);
+        (
+            installed_skill_dir.clone(),
+            installed_skill_dir.join("skill.yaml"),
+        )
     };
 
     if !manifest_path.exists() {

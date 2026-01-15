@@ -638,7 +638,10 @@ pub fn install(name: &str, from_marketplace: Option<&str>) -> Result<()> {
     if source_link.exists() {
         fs::remove_file(&source_link)?;
     }
+    #[cfg(unix)]
     std::os::unix::fs::symlink(&source_path, &source_link)?;
+    #[cfg(windows)]
+    std::os::windows::fs::symlink_dir(&source_path, &source_link)?;
 
     // Build the binary if needed
     let binary_path = if let Some(ref binary) = skill_manifest.binary {

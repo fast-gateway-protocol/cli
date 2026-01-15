@@ -396,6 +396,9 @@ fn validate_version(version: &str) -> Result<()> {
         bail!("Version must be semver format (e.g., 1.0.0)");
     }
     for part in parts {
+        if part.is_empty() {
+            bail!("Version components cannot be empty (e.g., '1..0' or '1.2.' are invalid)");
+        }
         if part.parse::<u32>().is_err() {
             bail!("Version components must be numbers");
         }
