@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "CLI for managing Fast Gateway Protocol daemons"
 license = "MIT"
-repository = "https://github.com/wolfiesch/fgp-cli"
+repository = "https://github.com/fast-gateway-protocol/cli"
 keywords = ["fgp", "daemon", "cli", "ai-agents"]
 categories = ["command-line-utilities", "development-tools"]
 
