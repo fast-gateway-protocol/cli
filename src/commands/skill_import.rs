@@ -2725,13 +2725,40 @@ fn parse_windsurf(path: &Path, content: &str) -> Result<ImportedSkill> {
 fn parse_aider(path: &Path, content: &str) -> Result<ImportedSkill> {
     let now = chrono::Utc::now().to_rfc3339();
 
-    // Extract name from first H1 or directory name
+    // Extract description first (we may use it for name inference)
+    let first_para = extract_first_paragraph(content);
+    let description = if let Some(overview) = extract_section_content(content, &["overview", "about", "description"]) {
+        let first_line = overview.lines().next().unwrap_or("").trim().to_string();
+        if !first_line.is_empty() {
+            ImportedField::medium(first_line, FieldSource::Content)
+                .with_note("Extracted from Overview section")
+        } else if !first_para.is_empty() {
+            ImportedField::medium(first_para.clone(), FieldSource::Content)
+                .with_note("Extracted from first paragraph")
+        } else {
+            ImportedField::low("Conventions skill".to_string(), FieldSource::Default)
+        }
+    } else if !first_para.is_empty() {
+        ImportedField::medium(first_para.clone(), FieldSource::Content)
+            .with_note("Extracted from first paragraph")
+    } else {
+        ImportedField::low("Conventions skill".to_string(), FieldSource::Default)
+    };
+
+    // Extract name from first H1 or try to infer from description
     let name = if let Some(h1) = extract_first_h1(content) {
         // Often the H1 is just "Conventions" or similar, so check if it's generic
         let lower = h1.to_lowercase();
         if lower.contains("convention") || lower.contains("rules") || lower.contains("guide") {
-            ImportedField::low(extract_name_from_path(path), FieldSource::Filename)
-                .with_note("H1 was generic, using path")
+            // Try to extract a project name from description
+            // Look for patterns like "for the X project" or "X assistant"
+            if let Some(project_name) = extract_project_name_from_text(&first_para) {
+                ImportedField::medium(project_name, FieldSource::Content)
+                    .with_note("Inferred from description")
+            } else {
+                ImportedField::low(extract_name_from_path(path), FieldSource::Filename)
+                    .with_note("H1 was generic, using path")
+            }
         } else {
             ImportedField::medium(h1, FieldSource::Content)
                 .with_note("Extracted from first H1 header")
@@ -2741,36 +2768,22 @@ fn parse_aider(path: &Path, content: &str) -> Result<ImportedSkill> {
             .with_note("Inferred from path")
     };
 
-    // Extract description from first paragraph or "Overview" section
-    let description = if let Some(overview) = extract_section_content(content, &["overview", "about", "description"]) {
-        let first_line = overview.lines().next().unwrap_or("").trim().to_string();
-        if !first_line.is_empty() {
-            ImportedField::medium(first_line, FieldSource::Content)
-                .with_note("Extracted from Overview section")
-        } else {
-            ImportedField::low(
-                format!("{} skill", name.value),
-                FieldSource::Default,
-            )
-        }
-    } else {
-        let first_para = extract_first_paragraph(content);
-        if !first_para.is_empty() {
-            ImportedField::medium(first_para, FieldSource::Content)
-                .with_note("Extracted from first paragraph")
-        } else {
-            ImportedField::low(
-                format!("{} skill", name.value),
-                FieldSource::Default,
-            )
-        }
-    };
-
     // Extract daemons from content patterns
     let daemons = extract_daemons_from_tools(&[], content);
 
     // Extract triggers - Aider often has "Commands" or "Usage" sections
     let mut triggers = extract_triggers(&[], content);
+
+    // Add daemon names as trigger keywords (like Zed parser)
+    for daemon in &daemons {
+        let daemon_name = daemon.name.value.clone();
+        if !triggers.keywords.iter().any(|k| k.value == daemon_name) {
+            triggers.keywords.push(ImportedField::low(
+                daemon_name,
+                FieldSource::MethodExtraction,
+            ).with_note("Inferred from detected daemons"));
+        }
+    }
 
     // Also check for Aider-specific command patterns
     if let Some(commands_section) = extract_section_content(content, &["commands", "usage"]) {
@@ -2800,6 +2813,48 @@ fn parse_aider(path: &Path, content: &str) -> Result<ImportedSkill> {
         source_path: path.to_path_buf(),
         import_timestamp: now,
     })
+}
+
+/// Extract a project name from text like "for the X project" or "X assistant"
+fn extract_project_name_from_text(text: &str) -> Option<String> {
+    let text_lower = text.to_lowercase();
+
+    // Pattern: "for the X project"
+    if let Some(idx) = text_lower.find("for the ") {
+        let start = idx + 8;
+        let rest = &text[start..];
+        if let Some(end_idx) = rest.to_lowercase().find(" project") {
+            let name = rest[..end_idx].trim();
+            if !name.is_empty() && name.len() < 50 {
+                return Some(title_case(name));
+            }
+        }
+    }
+
+    // Pattern: "X assistant" or "X helper"
+    let assistant_re = regex::Regex::new(r"(?i)(\w+(?:\s+\w+)?)\s+(?:assistant|helper|manager|service)").ok()?;
+    if let Some(cap) = assistant_re.captures(text) {
+        let name = cap.get(1)?.as_str();
+        if !name.to_lowercase().contains("this") && !name.to_lowercase().contains("the") {
+            return Some(title_case(name));
+        }
+    }
+
+    None
+}
+
+/// Convert text to title case
+fn title_case(s: &str) -> String {
+    s.split_whitespace()
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(c) => c.to_uppercase().chain(chars).collect(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 // ============================================================================
