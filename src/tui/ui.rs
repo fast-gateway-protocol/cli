@@ -302,11 +302,7 @@ fn draw_help_overlay(frame: &mut Frame) {
 }
 
 /// Draw the service detail overlay.
-fn draw_detail_overlay(
-    frame: &mut Frame,
-    service: &super::app::ServiceInfo,
-    methods: &[String],
-) {
+fn draw_detail_overlay(frame: &mut Frame, service: &super::app::ServiceInfo, methods: &[String]) {
     let area = centered_rect(60, 70, frame.area());
 
     // Clear the area first

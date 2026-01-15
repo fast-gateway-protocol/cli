@@ -213,8 +213,22 @@ impl App {
                     return;
                 }
 
-                // Brief delay for cleanup
-                std::thread::sleep(std::time::Duration::from_millis(100));
+                // Poll for service to actually stop (max 1 second)
+                let socket = fgp_daemon::lifecycle::service_socket_path(&service.name);
+                for _ in 0..10 {
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    if !socket.exists() {
+                        break;
+                    }
+                    // Also check if socket exists but daemon is not responding
+                    if let Ok(client) = fgp_daemon::FgpClient::new(&socket) {
+                        if client.health().is_err() {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
 
                 // Start again
                 match fgp_daemon::lifecycle::start_service(&service.name) {
@@ -265,7 +279,8 @@ impl App {
                         }
                     }
                     _ => {
-                        self.detail_methods.push("Error loading methods".to_string());
+                        self.detail_methods
+                            .push("Error loading methods".to_string());
                     }
                 },
                 Err(_) => {

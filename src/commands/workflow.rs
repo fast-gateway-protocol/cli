@@ -152,7 +152,11 @@ pub fn list(builtin_only: bool) -> Result<()> {
             for entry in fs::read_dir(&workflows_dir)? {
                 let entry = entry?;
                 let path = entry.path();
-                if path.extension().map(|e| e == "yaml" || e == "yml").unwrap_or(false) {
+                if path
+                    .extension()
+                    .map(|e| e == "yaml" || e == "yml")
+                    .unwrap_or(false)
+                {
                     if let Some(name) = path.file_stem().and_then(|n| n.to_str()) {
                         println!("  {}", name.green());
                     }
@@ -204,7 +208,10 @@ pub fn init(template: &str) -> Result<()> {
         output_path.display()
     );
     println!();
-    println!("Run with: {}", format!("fgp workflow run {}", output_path.display()).cyan());
+    println!(
+        "Run with: {}",
+        format!("fgp workflow run {}", output_path.display()).cyan()
+    );
 
     Ok(())
 }

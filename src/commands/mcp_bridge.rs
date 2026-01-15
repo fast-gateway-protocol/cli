@@ -7,7 +7,27 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 use std::fs;
 use std::io::{self, BufRead, Write};
-use std::path::PathBuf;
+
+// Use shared helpers from parent module
+use super::{fgp_services_dir, service_socket_path};
+
+/// Maximum retries when waiting for daemon to start.
+const MAX_START_RETRIES: u32 = 10;
+/// Delay between health check retries (ms).
+const RETRY_DELAY_MS: u64 = 100;
+
+/// Validate that a daemon name contains only safe characters.
+/// Prevents path traversal and shell injection attacks.
+fn is_valid_daemon_name(name: &str) -> bool {
+    !name.is_empty()
+        && !name.starts_with('.')
+        && !name.contains('/')
+        && !name.contains('\\')
+        && !name.contains('\0')
+        && name
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+}
 
 /// Start the MCP bridge in stdio mode.
 ///
@@ -33,11 +53,11 @@ pub fn serve() -> Result<()> {
 
         let response = match method {
             "initialize" => handle_initialize(&request),
-            "tools/list" => handle_tools_list(),
+            "tools/list" => handle_tools_list(id),
             "tools/call" => handle_tools_call(&request),
             _ => {
                 // Unknown method - return error
-                json_rpc_error(id.clone(), -32601, "Method not found")
+                json_rpc_error(id, -32601, "Method not found")
             }
         };
 
@@ -67,8 +87,27 @@ fn handle_initialize(request: &serde_json::Value) -> String {
     json_rpc_response(id, result)
 }
 
+/// Encode daemon and method into MCP tool name.
+/// Uses double underscore (__) as separator since daemon names can contain single underscores.
+fn encode_tool_name(daemon: &str, method: &str) -> String {
+    format!("fgp__{}__{}", daemon, method.replace('.', "_"))
+}
+
+/// Decode MCP tool name into daemon and method.
+/// Returns None if the format is invalid.
+fn decode_tool_name(tool_name: &str) -> Option<(String, String)> {
+    let stripped = tool_name.strip_prefix("fgp__")?;
+    let parts: Vec<&str> = stripped.splitn(2, "__").collect();
+    if parts.len() != 2 {
+        return None;
+    }
+    let daemon = parts[0].to_string();
+    let method = parts[1].replace('_', ".");
+    Some((daemon, method))
+}
+
 /// Handle MCP tools/list request.
-fn handle_tools_list() -> String {
+fn handle_tools_list(id: Option<serde_json::Value>) -> String {
     let mut tools = Vec::new();
 
     // Scan installed daemons and collect their methods
@@ -111,7 +150,7 @@ fn handle_tools_list() -> String {
                                                 }));
 
                                             tools.push(serde_json::json!({
-                                                "name": format!("fgp_{}_{}", name, method_name.replace('.', "_")),
+                                                "name": encode_tool_name(&name, method_name),
                                                 "description": format!("[FGP:{}] {}", name, description),
                                                 "inputSchema": input_schema
                                             }));
@@ -170,7 +209,7 @@ fn handle_tools_list() -> String {
         "tools": tools
     });
 
-    json_rpc_response(None, result)
+    json_rpc_response(id, result)
 }
 
 /// Handle MCP tools/call request.
@@ -178,7 +217,10 @@ fn handle_tools_call(request: &serde_json::Value) -> String {
     let id = request.get("id").cloned();
     let params = &request["params"];
     let tool_name = params["name"].as_str().unwrap_or("");
-    let arguments = params.get("arguments").cloned().unwrap_or(serde_json::json!({}));
+    let arguments = params
+        .get("arguments")
+        .cloned()
+        .unwrap_or(serde_json::json!({}));
 
     // Handle meta-tools
     if tool_name == "fgp_list_daemons" {
@@ -192,52 +234,74 @@ fn handle_tools_call(request: &serde_json::Value) -> String {
     }
 
     // Parse tool name to extract daemon and method
-    // Format: fgp_<daemon>_<method>
-    let parts: Vec<&str> = tool_name.strip_prefix("fgp_").unwrap_or(tool_name).splitn(2, '_').collect();
+    let (daemon, method) = match decode_tool_name(tool_name) {
+        Some((d, m)) => (d, m),
+        None => {
+            return json_rpc_error(
+                id,
+                -32602,
+                "Invalid tool name format. Expected fgp__<daemon>__<method>",
+            )
+        }
+    };
 
-    if parts.len() != 2 {
-        return json_rpc_error(id, -32602, "Invalid tool name format");
+    // Validate daemon name to prevent path traversal
+    if !is_valid_daemon_name(&daemon) {
+        return json_rpc_error(id, -32602, "Invalid daemon name");
     }
 
-    let daemon = parts[0];
-    let method = parts[1].replace('_', ".");
-
     // Call the daemon
-    let socket = service_socket_path(daemon);
+    let socket = service_socket_path(&daemon);
 
-    // Auto-start if needed
+    // Auto-start if needed with health polling
     if !socket.exists() {
-        if let Err(e) = fgp_daemon::lifecycle::start_service(daemon) {
+        if let Err(e) = fgp_daemon::lifecycle::start_service(&daemon) {
             return json_rpc_error(id, -32603, &format!("Failed to start daemon: {}", e));
         }
-        // Wait for daemon to be ready
-        std::thread::sleep(std::time::Duration::from_millis(500));
+        // Poll for daemon readiness instead of fixed sleep
+        if !wait_for_daemon_ready(&daemon) {
+            return json_rpc_error(id, -32603, "Daemon started but not responding");
+        }
     }
 
     match fgp_daemon::FgpClient::new(&socket) {
-        Ok(client) => {
-            match client.call(&method, arguments) {
-                Ok(response) if response.ok => {
-                    let result = serde_json::json!({
-                        "content": [{
-                            "type": "text",
-                            "text": serde_json::to_string_pretty(&response.result).unwrap_or_default()
-                        }]
-                    });
-                    json_rpc_response(id, result)
-                }
-                Ok(response) => {
-                    let error_msg = response
-                        .error
-                        .map(|e| e.message)
-                        .unwrap_or_else(|| "Unknown error".to_string());
-                    json_rpc_error(id, -32603, &error_msg)
-                }
-                Err(e) => json_rpc_error(id, -32603, &format!("Call failed: {}", e)),
+        Ok(client) => match client.call(&method, arguments) {
+            Ok(response) if response.ok => {
+                let result = serde_json::json!({
+                    "content": [{
+                        "type": "text",
+                        "text": serde_json::to_string_pretty(&response.result).unwrap_or_default()
+                    }]
+                });
+                json_rpc_response(id, result)
             }
-        }
+            Ok(response) => {
+                let error_msg = response
+                    .error
+                    .map(|e| e.message)
+                    .unwrap_or_else(|| "Unknown error".to_string());
+                json_rpc_error(id, -32603, &error_msg)
+            }
+            Err(e) => json_rpc_error(id, -32603, &format!("Call failed: {}", e)),
+        },
         Err(e) => json_rpc_error(id, -32603, &format!("Failed to connect to daemon: {}", e)),
     }
+}
+
+/// Wait for a daemon to become ready by polling its health endpoint.
+fn wait_for_daemon_ready(daemon: &str) -> bool {
+    let socket = service_socket_path(daemon);
+    for _ in 0..MAX_START_RETRIES {
+        std::thread::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS));
+        if socket.exists() {
+            if let Ok(client) = fgp_daemon::FgpClient::new(&socket) {
+                if client.health().is_ok() {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }
 
 /// Handle fgp_list_daemons meta-tool.
@@ -285,6 +349,10 @@ fn handle_list_daemons(id: Option<serde_json::Value>) -> String {
 
 /// Handle fgp_start_daemon meta-tool.
 fn handle_start_daemon(id: Option<serde_json::Value>, name: &str) -> String {
+    if !is_valid_daemon_name(name) {
+        return json_rpc_error(id, -32602, "Invalid daemon name");
+    }
+
     match fgp_daemon::lifecycle::start_service(name) {
         Ok(()) => {
             let result = serde_json::json!({
@@ -301,6 +369,10 @@ fn handle_start_daemon(id: Option<serde_json::Value>, name: &str) -> String {
 
 /// Handle fgp_stop_daemon meta-tool.
 fn handle_stop_daemon(id: Option<serde_json::Value>, name: &str) -> String {
+    if !is_valid_daemon_name(name) {
+        return json_rpc_error(id, -32602, "Invalid daemon name");
+    }
+
     match fgp_daemon::lifecycle::stop_service(name) {
         Ok(()) => {
             let result = serde_json::json!({
@@ -352,9 +424,7 @@ pub fn install() -> Result<()> {
         println!("{} FGP registered with Claude Code!", "✓".green().bold());
         println!();
         println!("Verify with: {}", "claude mcp list".cyan());
-        println!(
-            "Usage: Ask Claude to use FGP tools (e.g., \"List my unread emails with FGP\")"
-        );
+        println!("Usage: Ask Claude to use FGP tools (e.g., \"List my unread emails with FGP\")");
     } else {
         println!("{} Failed to register with Claude Code", "✗".red().bold());
     }
@@ -408,8 +478,7 @@ pub fn tools() -> Result<()> {
 
                                 println!(
                                     "  {} - {}",
-                                    format!("fgp_{}_{}", name, method_name.replace('.', "_"))
-                                        .green(),
+                                    encode_tool_name(&name, method_name).green(),
                                     description.dimmed()
                                 );
                                 total_tools += 1;
@@ -435,25 +504,11 @@ pub fn tools() -> Result<()> {
         "  {} - List all FGP daemons with their status",
         "fgp_list_daemons".green()
     );
-    println!(
-        "  {} - Start an FGP daemon",
-        "fgp_start_daemon".green()
-    );
+    println!("  {} - Start an FGP daemon", "fgp_start_daemon".green());
     println!("  {} - Stop an FGP daemon", "fgp_stop_daemon".green());
 
     println!();
     println!("Total: {} tools available", total_tools + 3);
 
     Ok(())
-}
-
-/// Get the FGP services directory.
-fn fgp_services_dir() -> PathBuf {
-    let base = shellexpand::tilde("~/.fgp/services");
-    PathBuf::from(base.as_ref())
-}
-
-/// Get the socket path for a service.
-fn service_socket_path(service: &str) -> PathBuf {
-    fgp_services_dir().join(service).join("daemon.sock")
 }

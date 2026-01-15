@@ -44,7 +44,7 @@ fn tail_logs(path: &PathBuf, lines: usize) -> Result<()> {
     let reader = BufReader::new(file);
 
     // Read all lines and keep the last N
-    let all_lines: Vec<String> = reader.lines().filter_map(|l| l.ok()).collect();
+    let all_lines: Vec<String> = reader.lines().map_while(Result::ok).collect();
     let start = if all_lines.len() > lines {
         all_lines.len() - lines
     } else {
@@ -94,20 +94,33 @@ fn follow_logs(path: &PathBuf) -> Result<()> {
     Ok(())
 }
 
+/// Detect log level from a line using single-pass approach.
+/// Returns the detected level or None for INFO/unknown.
+fn detect_log_level(line: &str) -> Option<&'static str> {
+    // Check for common log level patterns in order of severity
+    // Use byte-level search for efficiency
+    let line_upper = line.to_uppercase();
+
+    if line_upper.contains("ERROR") {
+        Some("ERROR")
+    } else if line_upper.contains("WARN") {
+        Some("WARN")
+    } else if line_upper.contains("DEBUG") {
+        Some("DEBUG")
+    } else if line_upper.contains("TRACE") {
+        Some("TRACE")
+    } else {
+        None // INFO or other
+    }
+}
+
 /// Print a log line with color-coding by level.
 fn print_log_line(line: &str) {
-    // Try to detect log level from the line
-    let colored_line = if line.contains("ERROR") || line.contains("\"level\":\"ERROR\"") {
-        line.red().to_string()
-    } else if line.contains("WARN") || line.contains("\"level\":\"WARN\"") {
-        line.yellow().to_string()
-    } else if line.contains("DEBUG") || line.contains("\"level\":\"DEBUG\"") {
-        line.dimmed().to_string()
-    } else if line.contains("TRACE") || line.contains("\"level\":\"TRACE\"") {
-        line.dimmed().to_string()
-    } else {
-        // INFO or other - green for visibility
-        line.to_string()
+    let colored_line = match detect_log_level(line) {
+        Some("ERROR") => line.red().to_string(),
+        Some("WARN") => line.yellow().to_string(),
+        Some("DEBUG") | Some("TRACE") => line.dimmed().to_string(),
+        _ => line.to_string(), // INFO or other
     };
 
     println!("{}", colored_line);

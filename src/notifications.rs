@@ -2,6 +2,13 @@
 //!
 //! Provides cross-platform notification support for FGP alerts.
 
+/// Escape a string for use in AppleScript string literals.
+/// Handles backslashes and double quotes which have special meaning in AppleScript.
+#[cfg(target_os = "macos")]
+fn escape_applescript_string(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
 /// Send a system notification.
 ///
 /// On macOS, uses osascript to display a native notification.
@@ -9,13 +16,13 @@
 pub fn notify(title: &str, message: &str) {
     #[cfg(target_os = "macos")]
     {
-        // Escape quotes in title and message
-        let title = title.replace('"', "\\\"");
-        let message = message.replace('"', "\\\"");
+        // Use AppleScript with proper escaping to prevent command injection
+        let escaped_title = escape_applescript_string(title);
+        let escaped_message = escape_applescript_string(message);
 
         let script = format!(
             "display notification \"{}\" with title \"{}\"",
-            message, title
+            escaped_message, escaped_title
         );
 
         let _ = std::process::Command::new("osascript")
@@ -35,12 +42,13 @@ pub fn notify(title: &str, message: &str) {
 pub fn notify_with_sound(title: &str, message: &str, sound: &str) {
     #[cfg(target_os = "macos")]
     {
-        let title = title.replace('"', "\\\"");
-        let message = message.replace('"', "\\\"");
+        let escaped_title = escape_applescript_string(title);
+        let escaped_message = escape_applescript_string(message);
+        let escaped_sound = escape_applescript_string(sound);
 
         let script = format!(
             "display notification \"{}\" with title \"{}\" sound name \"{}\"",
-            message, title, sound
+            escaped_message, escaped_title, escaped_sound
         );
 
         let _ = std::process::Command::new("osascript")

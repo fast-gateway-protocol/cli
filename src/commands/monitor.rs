@@ -13,6 +13,9 @@ use std::time::Duration;
 
 use crate::notifications;
 
+// Use shared helpers from parent module
+use super::{fgp_services_dir, service_socket_path};
+
 /// Service state for tracking changes.
 #[derive(Debug, Clone, PartialEq)]
 enum ServiceState {
@@ -162,19 +165,12 @@ fn handle_state_change(name: &str, prev: &ServiceState, current: &ServiceState) 
     };
 
     // Log to terminal
-    println!("[{}] {}", chrono::Local::now().format("%H:%M:%S"), log_style);
+    println!(
+        "[{}] {}",
+        chrono::Local::now().format("%H:%M:%S"),
+        log_style
+    );
 
     // Send system notification
     notifications::notify(title, &message);
-}
-
-/// Get the FGP services directory.
-fn fgp_services_dir() -> PathBuf {
-    let base = shellexpand::tilde("~/.fgp/services");
-    PathBuf::from(base.as_ref())
-}
-
-/// Get the socket path for a service.
-fn service_socket_path(service: &str) -> PathBuf {
-    fgp_services_dir().join(service).join("daemon.sock")
 }
