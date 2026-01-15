@@ -80,6 +80,12 @@ pub struct App {
 
     /// Whether help overlay is visible.
     pub show_help: bool,
+
+    /// Whether detail overlay is visible.
+    pub show_detail: bool,
+
+    /// Methods for the currently selected service (for detail view).
+    pub detail_methods: Vec<String>,
 }
 
 impl App {
@@ -93,6 +99,8 @@ impl App {
             message: None,
             message_timeout: Duration::from_secs(3),
             show_help: false,
+            show_detail: false,
+            detail_methods: Vec::new(),
         }
     }
 
@@ -185,6 +193,83 @@ impl App {
                             MessageType::Error,
                         );
                     }
+                }
+            }
+        }
+    }
+
+    /// Restart the selected service.
+    pub fn restart_selected(&mut self) {
+        if let Some(service) = self.selected_service().cloned() {
+            if service.status == ServiceStatus::Running
+                || service.status == ServiceStatus::Unhealthy
+            {
+                // Stop first
+                if let Err(e) = fgp_daemon::lifecycle::stop_service(&service.name) {
+                    self.set_message(
+                        format!("Failed to stop {}: {}", service.name, e),
+                        MessageType::Error,
+                    );
+                    return;
+                }
+
+                // Brief delay for cleanup
+                std::thread::sleep(std::time::Duration::from_millis(100));
+
+                // Start again
+                match fgp_daemon::lifecycle::start_service(&service.name) {
+                    Ok(()) => {
+                        self.set_message(
+                            format!("Restarted {}", service.name),
+                            MessageType::Success,
+                        );
+                        self.refresh_services();
+                    }
+                    Err(e) => {
+                        self.set_message(
+                            format!("Failed to restart {}: {}", service.name, e),
+                            MessageType::Error,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// Toggle detail overlay.
+    pub fn toggle_detail(&mut self) {
+        if !self.show_detail {
+            self.load_service_methods();
+        }
+        self.show_detail = !self.show_detail;
+    }
+
+    /// Load methods for the currently selected service.
+    fn load_service_methods(&mut self) {
+        self.detail_methods.clear();
+        if let Some(service) = self.selected_service() {
+            let socket = fgp_daemon::lifecycle::service_socket_path(&service.name);
+            match fgp_daemon::FgpClient::new(&socket) {
+                Ok(client) => match client.methods() {
+                    Ok(response) if response.ok => {
+                        if let Some(result) = response.result {
+                            if let Some(methods) = result["methods"].as_array() {
+                                for method in methods {
+                                    let name = method["name"].as_str().unwrap_or("unknown");
+                                    // Skip internal methods
+                                    if name != "health" && name != "stop" && name != "methods" {
+                                        self.detail_methods.push(name.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        self.detail_methods.push("Error loading methods".to_string());
+                    }
+                },
+                Err(_) => {
+                    self.detail_methods.push("Daemon not running".to_string());
                 }
             }
         }

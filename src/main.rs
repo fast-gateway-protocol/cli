@@ -11,9 +11,13 @@
 //! fgp status              # Show running daemons
 //! fgp call <method>       # Call a method
 //! fgp install <package>   # Install from local path
+//! fgp logs <service>      # View daemon logs
+//! fgp mcp serve           # Start MCP bridge
+//! fgp monitor             # Health monitor with notifications
 //! ```
 
 mod commands;
+mod notifications;
 mod tui;
 
 use anyhow::Result;
@@ -137,6 +141,37 @@ enum Commands {
         poll: u64,
     },
 
+    /// View daemon logs
+    Logs {
+        /// Service name
+        service: String,
+
+        /// Follow log output (like tail -f)
+        #[arg(short, long)]
+        follow: bool,
+
+        /// Number of lines to show
+        #[arg(short = 'n', long, default_value = "50")]
+        lines: usize,
+    },
+
+    /// MCP bridge commands (expose FGP as MCP server)
+    Mcp {
+        #[command(subcommand)]
+        action: McpBridgeAction,
+    },
+
+    /// Health monitor with notifications
+    Monitor {
+        /// Check interval in seconds
+        #[arg(short, long, default_value = "60")]
+        interval: u64,
+
+        /// Run as background daemon
+        #[arg(short, long)]
+        daemon: bool,
+    },
+
     /// Run or validate a workflow
     Workflow {
         #[command(subcommand)]
@@ -167,6 +202,31 @@ enum WorkflowAction {
         /// Path to workflow YAML file
         file: String,
     },
+
+    /// List available workflow templates
+    List {
+        /// Show built-in templates only
+        #[arg(long)]
+        builtin: bool,
+    },
+
+    /// Initialize a workflow from a template
+    Init {
+        /// Template name
+        template: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum McpBridgeAction {
+    /// Start MCP bridge server (stdio mode)
+    Serve,
+
+    /// Register FGP with Claude Code
+    Install,
+
+    /// List available MCP tools from daemons
+    Tools,
 }
 
 #[derive(Subcommand)]
@@ -243,7 +303,7 @@ enum SkillAction {
     },
 
     /// Manage MCP bridge registration
-    Mcp {
+    McpReg {
         #[command(subcommand)]
         action: McpAction,
     },
@@ -401,9 +461,22 @@ fn main() -> Result<()> {
         Commands::Health { service } => commands::health::run(&service),
         Commands::Dashboard { port, open } => commands::dashboard::run(port, open),
         Commands::Tui { poll } => commands::tui::run(poll),
+        Commands::Logs {
+            service,
+            follow,
+            lines,
+        } => commands::logs::run(&service, follow, lines),
+        Commands::Mcp { action } => match action {
+            McpBridgeAction::Serve => commands::mcp_bridge::serve(),
+            McpBridgeAction::Install => commands::mcp_bridge::install(),
+            McpBridgeAction::Tools => commands::mcp_bridge::tools(),
+        },
+        Commands::Monitor { interval, daemon } => commands::monitor::run(interval, daemon),
         Commands::Workflow { action } => match action {
             WorkflowAction::Run { file, verbose } => commands::workflow::run(&file, verbose),
             WorkflowAction::Validate { file } => commands::workflow::validate(&file),
+            WorkflowAction::List { builtin } => commands::workflow::list(builtin),
+            WorkflowAction::Init { template } => commands::workflow::init(&template),
         },
         Commands::Skill { action } => match action {
             SkillAction::List => commands::skill::list(),
@@ -431,7 +504,7 @@ fn main() -> Result<()> {
                 MarketplaceAction::Add { url } => commands::skill::marketplace_add(&url),
                 MarketplaceAction::Update => commands::skill::marketplace_update(),
             },
-            SkillAction::Mcp { action } => match action {
+            SkillAction::McpReg { action } => match action {
                 McpAction::Register { name, target } => {
                     if target == "mcp" {
                         commands::skill::mcp_register(&name)

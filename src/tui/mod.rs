@@ -69,35 +69,72 @@ fn run_app<B: Backend>(
                 use crossterm::event::KeyCode;
 
                 match key.code {
-                    // Quit
-                    KeyCode::Char('q') | KeyCode::Esc => {
-                        app.should_quit = true;
+                    // Quit / Close overlays
+                    KeyCode::Esc => {
+                        if app.show_detail {
+                            app.show_detail = false;
+                        } else if app.show_help {
+                            app.show_help = false;
+                        } else {
+                            app.should_quit = true;
+                        }
+                    }
+                    KeyCode::Char('q') => {
+                        if !app.show_detail && !app.show_help {
+                            app.should_quit = true;
+                        }
                     }
                     // Navigation
                     KeyCode::Up | KeyCode::Char('k') => {
-                        app.select_previous();
+                        if !app.show_detail {
+                            app.select_previous();
+                        }
                     }
                     KeyCode::Down | KeyCode::Char('j') => {
-                        app.select_next();
+                        if !app.show_detail {
+                            app.select_next();
+                        }
                     }
                     KeyCode::Home => {
-                        app.select_first();
+                        if !app.show_detail {
+                            app.select_first();
+                        }
                     }
                     KeyCode::End => {
-                        app.select_last();
+                        if !app.show_detail {
+                            app.select_last();
+                        }
                     }
                     // Actions
-                    KeyCode::Char('s') | KeyCode::Enter => {
-                        app.start_selected();
+                    KeyCode::Char('s') => {
+                        if !app.show_detail && !app.show_help {
+                            app.start_selected();
+                        }
+                    }
+                    KeyCode::Enter | KeyCode::Char('d') => {
+                        if !app.show_help {
+                            app.toggle_detail();
+                        }
                     }
                     KeyCode::Char('x') => {
-                        app.stop_selected();
+                        if !app.show_detail && !app.show_help {
+                            app.stop_selected();
+                        }
+                    }
+                    KeyCode::Char('R') => {
+                        if !app.show_detail && !app.show_help {
+                            app.restart_selected();
+                        }
                     }
                     KeyCode::Char('r') => {
-                        app.refresh_services();
+                        if !app.show_detail && !app.show_help {
+                            app.refresh_services();
+                        }
                     }
                     KeyCode::Char('?') => {
-                        app.toggle_help();
+                        if !app.show_detail {
+                            app.toggle_help();
+                        }
                     }
                     _ => {}
                 }
