@@ -161,7 +161,7 @@ enum Commands {
         action: McpBridgeAction,
     },
 
-    /// Health monitor with notifications
+    /// Health monitor with notifications and auto-restart
     Monitor {
         /// Check interval in seconds
         #[arg(short, long, default_value = "60")]
@@ -170,6 +170,18 @@ enum Commands {
         /// Run as background daemon
         #[arg(short, long)]
         daemon: bool,
+
+        /// Auto-restart crashed services
+        #[arg(short, long)]
+        auto_restart: bool,
+
+        /// Max restart attempts per service (0 = unlimited)
+        #[arg(long, default_value = "3")]
+        max_restarts: u32,
+
+        /// Delay between restart attempts in seconds
+        #[arg(long, default_value = "5")]
+        restart_delay: u64,
     },
 
     /// Run or validate a workflow
@@ -471,7 +483,13 @@ fn main() -> Result<()> {
             McpBridgeAction::Install => commands::mcp_bridge::install(),
             McpBridgeAction::Tools => commands::mcp_bridge::tools(),
         },
-        Commands::Monitor { interval, daemon } => commands::monitor::run(interval, daemon),
+        Commands::Monitor {
+            interval,
+            daemon,
+            auto_restart,
+            max_restarts,
+            restart_delay,
+        } => commands::monitor::run(interval, daemon, auto_restart, max_restarts, restart_delay),
         Commands::Workflow { action } => match action {
             WorkflowAction::Run { file, verbose } => commands::workflow::run(&file, verbose),
             WorkflowAction::Validate { file } => commands::workflow::validate(&file),

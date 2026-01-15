@@ -1,7 +1,8 @@
-//! Health monitor with notifications.
+//! Health monitor with notifications and auto-restart watchdog.
 //!
 //! Watches FGP daemons and sends system notifications when services
-//! change state (crash, recover, go unhealthy).
+//! change state (crash, recover, go unhealthy). Optionally auto-restarts
+//! crashed services.
 
 use anyhow::Result;
 use colored::Colorize;
@@ -25,8 +26,34 @@ enum ServiceState {
     Error,
 }
 
+/// Watchdog configuration for auto-restart.
+#[derive(Clone)]
+struct WatchdogConfig {
+    enabled: bool,
+    max_restarts: u32,
+    restart_delay: Duration,
+}
+
+/// Per-service restart tracking.
+#[derive(Default)]
+struct RestartTracker {
+    attempts: HashMap<String, u32>,
+}
+
 /// Run the health monitor.
-pub fn run(interval_secs: u64, daemon: bool) -> Result<()> {
+pub fn run(
+    interval_secs: u64,
+    daemon: bool,
+    auto_restart: bool,
+    max_restarts: u32,
+    restart_delay_secs: u64,
+) -> Result<()> {
+    let watchdog = WatchdogConfig {
+        enabled: auto_restart,
+        max_restarts,
+        restart_delay: Duration::from_secs(restart_delay_secs),
+    };
+
     if daemon {
         println!(
             "{} Starting health monitor daemon (interval: {}s)...",
@@ -34,29 +61,44 @@ pub fn run(interval_secs: u64, daemon: bool) -> Result<()> {
             interval_secs
         );
         println!("Monitor will run in background and send notifications on state changes.");
-
-        // Fork to background
-        // For simplicity, we'll just run in foreground with reduced output
-        // A proper daemon would use daemonize crate
     }
 
     println!(
         "{} Monitoring FGP services (Ctrl+C to stop)...",
         "→".blue().bold()
     );
+
+    if watchdog.enabled {
+        let max_str = if max_restarts == 0 {
+            "unlimited".to_string()
+        } else {
+            format!("{}", max_restarts)
+        };
+        println!(
+            "{} Auto-restart enabled (max: {}, delay: {}s)",
+            "⟳".cyan().bold(),
+            max_str,
+            restart_delay_secs
+        );
+    }
     println!();
 
     let mut states: HashMap<String, ServiceState> = HashMap::new();
+    let mut restart_tracker = RestartTracker::default();
     let interval = Duration::from_secs(interval_secs);
 
     loop {
-        check_services(&mut states);
+        check_services(&mut states, &watchdog, &mut restart_tracker);
         thread::sleep(interval);
     }
 }
 
 /// Check all services and send notifications on state changes.
-fn check_services(states: &mut HashMap<String, ServiceState>) {
+fn check_services(
+    states: &mut HashMap<String, ServiceState>,
+    watchdog: &WatchdogConfig,
+    restart_tracker: &mut RestartTracker,
+) {
     let services_dir = fgp_services_dir();
 
     if !services_dir.exists() {
@@ -80,7 +122,12 @@ fn check_services(states: &mut HashMap<String, ServiceState>) {
         // Check for state transitions
         if let Some(prev_state) = states.get(&name) {
             if *prev_state != current_state {
-                handle_state_change(&name, prev_state, &current_state);
+                handle_state_change(&name, prev_state, &current_state, watchdog, restart_tracker);
+
+                // Reset restart counter if service came back up
+                if current_state == ServiceState::Running {
+                    restart_tracker.attempts.remove(&name);
+                }
             }
         }
 
@@ -113,7 +160,19 @@ fn get_service_state(socket: &PathBuf) -> ServiceState {
 }
 
 /// Handle a state change and send notifications.
-fn handle_state_change(name: &str, prev: &ServiceState, current: &ServiceState) {
+fn handle_state_change(
+    name: &str,
+    prev: &ServiceState,
+    current: &ServiceState,
+    watchdog: &WatchdogConfig,
+    restart_tracker: &mut RestartTracker,
+) {
+    let should_restart = matches!(
+        (prev, current),
+        (ServiceState::Running, ServiceState::Error)
+            | (ServiceState::Running, ServiceState::Stopped)
+    );
+
     let (title, message, log_style) = match (prev, current) {
         // Service crashed (was running, now error or stopped)
         (ServiceState::Running, ServiceState::Error) => (
@@ -173,4 +232,72 @@ fn handle_state_change(name: &str, prev: &ServiceState, current: &ServiceState) 
 
     // Send system notification
     notifications::notify(title, &message);
+
+    // Auto-restart if enabled and service crashed
+    if watchdog.enabled && should_restart {
+        attempt_restart(name, watchdog, restart_tracker);
+    }
+}
+
+/// Attempt to restart a crashed service.
+fn attempt_restart(name: &str, watchdog: &WatchdogConfig, restart_tracker: &mut RestartTracker) {
+    let attempts = restart_tracker.attempts.entry(name.to_string()).or_insert(0);
+    *attempts += 1;
+
+    // Check if we've exceeded max restarts (0 = unlimited)
+    if watchdog.max_restarts > 0 && *attempts > watchdog.max_restarts {
+        println!(
+            "[{}] {} {} exceeded max restarts ({}), not restarting",
+            chrono::Local::now().format("%H:%M:%S"),
+            "⚠".yellow().bold(),
+            name,
+            watchdog.max_restarts
+        );
+        notifications::notify(
+            "FGP Restart Limit Reached",
+            &format!("{} exceeded {} restart attempts", name, watchdog.max_restarts),
+        );
+        return;
+    }
+
+    println!(
+        "[{}] {} Restarting {} (attempt {}{})...",
+        chrono::Local::now().format("%H:%M:%S"),
+        "⟳".cyan().bold(),
+        name,
+        attempts,
+        if watchdog.max_restarts > 0 {
+            format!("/{}", watchdog.max_restarts)
+        } else {
+            String::new()
+        }
+    );
+
+    // Wait before restarting
+    thread::sleep(watchdog.restart_delay);
+
+    // Attempt to start the service
+    match fgp_daemon::lifecycle::start_service(name) {
+        Ok(()) => {
+            println!(
+                "[{}] {} {} restart initiated",
+                chrono::Local::now().format("%H:%M:%S"),
+                "→".blue().bold(),
+                name
+            );
+        }
+        Err(e) => {
+            println!(
+                "[{}] {} Failed to restart {}: {}",
+                chrono::Local::now().format("%H:%M:%S"),
+                "✗".red().bold(),
+                name,
+                e
+            );
+            notifications::notify(
+                "FGP Restart Failed",
+                &format!("Failed to restart {}: {}", name, e),
+            );
+        }
+    }
 }
