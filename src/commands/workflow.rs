@@ -5,15 +5,10 @@ use colored::Colorize;
 
 /// Run a workflow from a YAML file.
 pub fn run(file: &str, verbose: bool) -> Result<()> {
-    println!(
-        "{} Loading workflow from {}...",
-        "→".blue().bold(),
-        file
-    );
+    println!("{} Loading workflow from {}...", "→".blue().bold(), file);
 
     // Load and parse the workflow
-    let workflow = fgp_workflow::yaml::load_file(file)
-        .context("Failed to load workflow")?;
+    let workflow = fgp_workflow::yaml::load_file(file).context("Failed to load workflow")?;
 
     println!(
         "{} Running workflow: {}",
@@ -53,10 +48,7 @@ pub fn run(file: &str, verbose: bool) -> Result<()> {
         println!();
     }
 
-    println!(
-        "Total time: {:.1}ms",
-        result.total_ms
-    );
+    println!("Total time: {:.1}ms", result.total_ms);
 
     // Print final result
     println!();
@@ -68,15 +60,10 @@ pub fn run(file: &str, verbose: bool) -> Result<()> {
 
 /// Validate a workflow file without running it.
 pub fn validate(file: &str) -> Result<()> {
-    println!(
-        "{} Validating workflow {}...",
-        "→".blue().bold(),
-        file
-    );
+    println!("{} Validating workflow {}...", "→".blue().bold(), file);
 
     // Load and parse the workflow
-    let workflow = fgp_workflow::yaml::load_file(file)
-        .context("Failed to load workflow")?;
+    let workflow = fgp_workflow::yaml::load_file(file).context("Failed to load workflow")?;
 
     println!("{} Workflow is valid!", "✓".green().bold());
     println!();

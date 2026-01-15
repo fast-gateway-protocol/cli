@@ -25,11 +25,9 @@ pub fn run(service: &str) -> Result<()> {
         );
     }
 
-    let client = fgp_daemon::FgpClient::new(&socket_path)
-        .context("Failed to connect to daemon")?;
+    let client = fgp_daemon::FgpClient::new(&socket_path).context("Failed to connect to daemon")?;
 
-    let response = client.methods()
-        .context("Failed to get methods")?;
+    let response = client.methods().context("Failed to get methods")?;
 
     if !response.ok {
         let error = response.error.unwrap_or_default();
@@ -37,10 +35,7 @@ pub fn run(service: &str) -> Result<()> {
     }
 
     let result = response.result.unwrap_or_default();
-    let methods_array = result["methods"]
-        .as_array()
-        .cloned()
-        .unwrap_or_default();
+    let methods_array = result["methods"].as_array().cloned().unwrap_or_default();
 
     println!("{} methods:", service.bold());
     println!();
@@ -49,10 +44,7 @@ pub fn run(service: &str) -> Result<()> {
         .iter()
         .map(|m| MethodInfo {
             name: m["name"].as_str().unwrap_or("?").to_string(),
-            description: m["description"]
-                .as_str()
-                .unwrap_or("")
-                .to_string(),
+            description: m["description"].as_str().unwrap_or("").to_string(),
         })
         .collect();
 

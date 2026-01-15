@@ -24,19 +24,12 @@ pub fn run(port: u16, open: bool) -> Result<()> {
         cmd.arg("--open");
     }
 
-    println!(
-        "{}",
-        format!("Dashboard URL: {}", url).dimmed()
-    );
-    println!(
-        "{}",
-        "Press Ctrl+C to stop".dimmed()
-    );
+    println!("{}", format!("Dashboard URL: {}", url).dimmed());
+    println!("{}", "Press Ctrl+C to stop".dimmed());
     println!();
 
     // Run the dashboard (blocks until interrupted)
-    let status = cmd.status()
-        .context("Failed to start dashboard")?;
+    let status = cmd.status().context("Failed to start dashboard")?;
 
     if !status.success() {
         anyhow::bail!("Dashboard exited with status: {}", status);

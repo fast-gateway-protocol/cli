@@ -3,7 +3,12 @@
 use anyhow::{bail, Context, Result};
 use colored::Colorize;
 
-pub fn run(method: &str, params: &str, service_override: Option<&str>, no_auto_start: bool) -> Result<()> {
+pub fn run(
+    method: &str,
+    params: &str,
+    service_override: Option<&str>,
+    no_auto_start: bool,
+) -> Result<()> {
     // Resolve service/socket and normalize the method we send over the wire.
     //
     // Preferred:
@@ -55,12 +60,10 @@ pub fn run(method: &str, params: &str, service_override: Option<&str>, no_auto_s
                 service
             );
         }
-        fgp_daemon::FgpClient::new(&socket_path)
-            .context("Failed to connect to daemon")?
+        fgp_daemon::FgpClient::new(&socket_path).context("Failed to connect to daemon")?
     } else {
         // Default: auto-start daemon if not running
-        fgp_daemon::FgpClient::for_service(&service)
-            .context("Failed to create client")?
+        fgp_daemon::FgpClient::for_service(&service).context("Failed to create client")?
     };
 
     let start = std::time::Instant::now();

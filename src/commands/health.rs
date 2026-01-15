@@ -16,12 +16,10 @@ pub fn run(service: &str) -> Result<()> {
         );
     }
 
-    let client = fgp_daemon::FgpClient::new(&socket_path)
-        .context("Failed to connect to daemon")?;
+    let client = fgp_daemon::FgpClient::new(&socket_path).context("Failed to connect to daemon")?;
 
     let start = std::time::Instant::now();
-    let response = client.health()
-        .context("Failed to get health")?;
+    let response = client.health().context("Failed to get health")?;
     let elapsed = start.elapsed();
 
     if response.ok {

@@ -17,22 +17,14 @@ pub fn run(service: &str) -> Result<()> {
         return Ok(());
     }
 
-    println!(
-        "{} Stopping {}...",
-        "→".blue().bold(),
-        service.bold()
-    );
+    println!("{} Stopping {}...", "→".blue().bold(), service.bold());
 
     // Connect and send stop command
     let client = match fgp_daemon::FgpClient::new(&socket_path) {
         Ok(c) => c,
         Err(e) => {
             // Socket exists but can't connect - probably stale
-            println!(
-                "{} Could not connect to daemon: {}",
-                "!".yellow().bold(),
-                e
-            );
+            println!("{} Could not connect to daemon: {}", "!".yellow().bold(), e);
             println!("  Removing stale socket...");
             let _ = std::fs::remove_file(&socket_path);
             return Ok(());

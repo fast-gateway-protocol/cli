@@ -41,10 +41,10 @@ pub fn run(service: &str, foreground: bool) -> Result<()> {
     }
 
     // Read manifest to get entrypoint
-    let manifest_content = fs::read_to_string(&manifest_path)
-        .context("Failed to read manifest.json")?;
-    let manifest: serde_json::Value = serde_json::from_str(&manifest_content)
-        .context("Failed to parse manifest.json")?;
+    let manifest_content =
+        fs::read_to_string(&manifest_path).context("Failed to read manifest.json")?;
+    let manifest: serde_json::Value =
+        serde_json::from_str(&manifest_content).context("Failed to parse manifest.json")?;
 
     let entrypoint = manifest["daemon"]["entrypoint"]
         .as_str()
@@ -55,11 +55,7 @@ pub fn run(service: &str, foreground: bool) -> Result<()> {
         bail!("Daemon entrypoint not found: {}", entrypoint_path.display());
     }
 
-    println!(
-        "{} Starting {}...",
-        "→".blue().bold(),
-        service.bold()
-    );
+    println!("{} Starting {}...", "→".blue().bold(), service.bold());
 
     if foreground {
         // Run in foreground (blocking)
@@ -88,10 +84,7 @@ pub fn run(service: &str, foreground: bool) -> Result<()> {
                 service.bold(),
                 child.id()
             );
-            println!(
-                "  Socket: {}",
-                socket_path.display().to_string().dimmed()
-            );
+            println!("  Socket: {}", socket_path.display().to_string().dimmed());
         } else {
             println!(
                 "{} Daemon started but socket not found yet. Check logs.",

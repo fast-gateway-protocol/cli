@@ -72,17 +72,38 @@ pub fn run(name: &str, description: Option<&str>, language: &str, no_git: bool) 
     let description_lower = description.to_lowercase();
 
     // manifest.json
-    let manifest = substitute_template(TEMPLATE_MANIFEST, name, description, &name_pascal, &name_title, &description_lower);
+    let manifest = substitute_template(
+        TEMPLATE_MANIFEST,
+        name,
+        description,
+        &name_pascal,
+        &name_title,
+        &description_lower,
+    );
     fs::write(package_dir.join("manifest.json"), manifest)?;
     println!("  {} Generated manifest.json", "✓".green());
 
     // Cargo.toml
-    let cargo = substitute_template(TEMPLATE_CARGO, name, description, &name_pascal, &name_title, &description_lower);
+    let cargo = substitute_template(
+        TEMPLATE_CARGO,
+        name,
+        description,
+        &name_pascal,
+        &name_title,
+        &description_lower,
+    );
     fs::write(package_dir.join("Cargo.toml"), cargo)?;
     println!("  {} Generated Cargo.toml", "✓".green());
 
     // src/main.rs
-    let main_rs = substitute_template(TEMPLATE_MAIN, name, description, &name_pascal, &name_title, &description_lower);
+    let main_rs = substitute_template(
+        TEMPLATE_MAIN,
+        name,
+        description,
+        &name_pascal,
+        &name_title,
+        &description_lower,
+    );
     fs::write(package_dir.join("src/main.rs"), main_rs)?;
     println!(
         "  {} Generated src/main.rs (Rust daemon skeleton)",
@@ -93,7 +114,14 @@ pub fn run(name: &str, description: Option<&str>, language: &str, no_git: bool) 
     fs::write(package_dir.join(".gitignore"), TEMPLATE_GITIGNORE)?;
 
     // README.md
-    let readme = substitute_template(TEMPLATE_README, name, description, &name_pascal, &name_title, &description_lower);
+    let readme = substitute_template(
+        TEMPLATE_README,
+        name,
+        description,
+        &name_pascal,
+        &name_title,
+        &description_lower,
+    );
     fs::write(package_dir.join("README.md"), readme)?;
     println!("  {} Generated README.md", "✓".green());
 
@@ -112,45 +140,61 @@ pub fn run(name: &str, description: Option<&str>, language: &str, no_git: bool) 
     }
 
     // Claude Code skill
-    let skill = substitute_template(TEMPLATE_SKILL, name, description, &name_pascal, &name_title, &description_lower);
+    let skill = substitute_template(
+        TEMPLATE_SKILL,
+        name,
+        description,
+        &name_pascal,
+        &name_title,
+        &description_lower,
+    );
     fs::write(package_dir.join("skills/claude-code/SKILL.md"), skill)?;
     println!("  {} Generated skills/claude-code/SKILL.md", "✓".green());
 
     // Cursor skill
-    let cursor = substitute_template(TEMPLATE_CURSOR, name, description, &name_pascal, &name_title, &description_lower);
+    let cursor = substitute_template(
+        TEMPLATE_CURSOR,
+        name,
+        description,
+        &name_pascal,
+        &name_title,
+        &description_lower,
+    );
     fs::write(
         package_dir.join(format!("skills/cursor/{}.mdc", name)),
         cursor,
     )?;
-    println!(
-        "  {} Generated skills/cursor/{}.mdc",
-        "✓".green(),
-        name
-    );
+    println!("  {} Generated skills/cursor/{}.mdc", "✓".green(), name);
 
     // Windsurf skill
-    let windsurf = substitute_template(TEMPLATE_WINDSURF, name, description, &name_pascal, &name_title, &description_lower);
+    let windsurf = substitute_template(
+        TEMPLATE_WINDSURF,
+        name,
+        description,
+        &name_pascal,
+        &name_title,
+        &description_lower,
+    );
     fs::write(
         package_dir.join(format!("skills/windsurf/{}.md", name)),
         windsurf,
     )?;
-    println!(
-        "  {} Generated skills/windsurf/{}.md",
-        "✓".green(),
-        name
-    );
+    println!("  {} Generated skills/windsurf/{}.md", "✓".green(), name);
 
     // Continue skill
-    let continue_skill = substitute_template(TEMPLATE_CONTINUE, name, description, &name_pascal, &name_title, &description_lower);
+    let continue_skill = substitute_template(
+        TEMPLATE_CONTINUE,
+        name,
+        description,
+        &name_pascal,
+        &name_title,
+        &description_lower,
+    );
     fs::write(
         package_dir.join(format!("skills/continue/{}.yaml", name)),
         continue_skill,
     )?;
-    println!(
-        "  {} Generated skills/continue/{}.yaml",
-        "✓".green(),
-        name
-    );
+    println!("  {} Generated skills/continue/{}.yaml", "✓".green(), name);
 
     // Git initialization
     if !no_git {
@@ -190,12 +234,18 @@ fn is_valid_name(name: &str) -> bool {
     }
 
     // Must start with a letter
-    if !name.chars().next().map(|c| c.is_ascii_lowercase()).unwrap_or(false) {
+    if !name
+        .chars()
+        .next()
+        .map(|c| c.is_ascii_lowercase())
+        .unwrap_or(false)
+    {
         return false;
     }
 
     // Only lowercase letters, numbers, and hyphens
-    name.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+    name.chars()
+        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
 }
 
 /// Convert to PascalCase.

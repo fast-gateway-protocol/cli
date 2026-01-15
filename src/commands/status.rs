@@ -58,17 +58,10 @@ pub fn run(verbose: bool) -> Result<()> {
                 Ok(client) => match client.health() {
                     Ok(response) if response.ok => {
                         let result = response.result.unwrap_or_default();
-                        let version = result["version"]
-                            .as_str()
-                            .unwrap_or("?")
-                            .to_string();
-                        let uptime_secs = result["uptime_seconds"]
-                            .as_u64()
-                            .unwrap_or(0);
+                        let version = result["version"].as_str().unwrap_or("?").to_string();
+                        let uptime_secs = result["uptime_seconds"].as_u64().unwrap_or(0);
                         let uptime = format_uptime(uptime_secs);
-                        let status_str = result["status"]
-                            .as_str()
-                            .unwrap_or("running");
+                        let status_str = result["status"].as_str().unwrap_or("running");
 
                         let status_colored = match status_str {
                             "healthy" => "● running".green().to_string(),
@@ -111,11 +104,7 @@ pub fn run(verbose: bool) -> Result<()> {
                 if let Ok(response) = client.health() {
                     if response.ok {
                         if let Some(result) = response.result {
-                            println!(
-                                "\n{} {} health details:",
-                                "→".blue(),
-                                service_name.bold()
-                            );
+                            println!("\n{} {} health details:", "→".blue(), service_name.bold());
                             println!(
                                 "{}",
                                 serde_json::to_string_pretty(&result)
@@ -130,10 +119,7 @@ pub fn run(verbose: bool) -> Result<()> {
     }
 
     if !any_service {
-        println!(
-            "{} No services installed.",
-            "!".yellow().bold()
-        );
+        println!("{} No services installed.", "!".yellow().bold());
         println!("  Run 'fgp install <package>' to install a service.");
         return Ok(());
     }

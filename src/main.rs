@@ -159,12 +159,18 @@ fn main() -> Result<()> {
             language,
             no_git,
         } => commands::new::run(&name, description.as_deref(), &language, no_git),
-        Commands::Start { service, foreground } => commands::start::run(&service, foreground),
+        Commands::Start {
+            service,
+            foreground,
+        } => commands::start::run(&service, foreground),
         Commands::Stop { service } => commands::stop::run(&service),
         Commands::Status { verbose } => commands::status::run(verbose),
-        Commands::Call { method, params, service, no_auto_start } => {
-            commands::call::run(&method, &params, service.as_deref(), no_auto_start)
-        }
+        Commands::Call {
+            method,
+            params,
+            service,
+            no_auto_start,
+        } => commands::call::run(&method, &params, service.as_deref(), no_auto_start),
         Commands::Install { path } => commands::install::run(&path),
         Commands::Methods { service } => commands::methods::run(&service),
         Commands::Health { service } => commands::health::run(&service),

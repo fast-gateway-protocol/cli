@@ -73,9 +73,16 @@ pub fn run(path: &str) -> Result<()> {
             package_path.to_path_buf(),
             package_path.join("manifest.json"),
         )
-    } else if package_path.file_name().map(|f| f == "manifest.json").unwrap_or(false) {
+    } else if package_path
+        .file_name()
+        .map(|f| f == "manifest.json")
+        .unwrap_or(false)
+    {
         (
-            package_path.parent().unwrap_or(Path::new(".")).to_path_buf(),
+            package_path
+                .parent()
+                .unwrap_or(Path::new("."))
+                .to_path_buf(),
             package_path.to_path_buf(),
         )
     } else {
@@ -87,10 +94,10 @@ pub fn run(path: &str) -> Result<()> {
     }
 
     // Parse manifest
-    let manifest_content = fs::read_to_string(&manifest_path)
-        .context("Failed to read manifest.json")?;
-    let manifest: Manifest = serde_json::from_str(&manifest_content)
-        .context("Failed to parse manifest.json")?;
+    let manifest_content =
+        fs::read_to_string(&manifest_path).context("Failed to read manifest.json")?;
+    let manifest: Manifest =
+        serde_json::from_str(&manifest_content).context("Failed to parse manifest.json")?;
 
     println!();
     println!(
@@ -106,7 +113,8 @@ pub fn run(path: &str) -> Result<()> {
         println!(
             "  {} Detected agents: {}",
             "✓".green(),
-            detected_agents.iter()
+            detected_agents
+                .iter()
                 .map(|(_, name)| *name)
                 .collect::<Vec<_>>()
                 .join(", ")
@@ -115,16 +123,14 @@ pub fn run(path: &str) -> Result<()> {
 
     // Step 2: Create service directory and copy daemon files
     let service_dir = fgp_services_dir().join(&manifest.name);
-    fs::create_dir_all(&service_dir)
-        .context("Failed to create service directory")?;
+    fs::create_dir_all(&service_dir).context("Failed to create service directory")?;
 
     println!(
         "  {} Daemon installed to {}",
         "✓".green(),
         format!("~/.fgp/services/{}/", manifest.name).dimmed()
     );
-    copy_dir_contents(&package_dir, &service_dir)
-        .context("Failed to copy daemon files")?;
+    copy_dir_contents(&package_dir, &service_dir).context("Failed to copy daemon files")?;
 
     // Step 3: Install skill files for detected agents
     let mut installed_skills = Vec::new();
@@ -149,11 +155,7 @@ pub fn run(path: &str) -> Result<()> {
             copy_dir_contents(&source_path, target_path)
                 .with_context(|| format!("Failed to install {} skill", agent_id))?;
 
-            println!(
-                "  {} {} skill installed",
-                "✓".green(),
-                agent_name
-            );
+            println!("  {} {} skill installed", "✓".green(), agent_name);
             installed_skills.push(*agent_name);
         }
     }
@@ -164,11 +166,7 @@ pub fn run(path: &str) -> Result<()> {
         let creds_path = Path::new(creds_expanded.as_ref());
 
         if creds_path.exists() {
-            println!(
-                "  {} OAuth configured ({})",
-                "✓".green(),
-                auth.provider
-            );
+            println!("  {} OAuth configured ({})", "✓".green(), auth.provider);
         } else {
             println!(
                 "  {} OAuth credentials needed at {}",

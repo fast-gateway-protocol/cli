@@ -37,10 +37,7 @@ pub fn run() -> Result<()> {
     }
 
     if !found_any {
-        println!(
-            "  {} No supported AI agents detected.",
-            "!".yellow().bold()
-        );
+        println!("  {} No supported AI agents detected.", "!".yellow().bold());
         println!();
         println!("  Supported agents:");
         for (name, _, _) in AGENT_PATHS {
