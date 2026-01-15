@@ -27,6 +27,7 @@ fgp-workflow = { git = "https://github.com/fast-gateway-protocol/workflow.git" }
 # Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_yaml = "0.9"
 
 # Error handling
 anyhow = "1"
@@ -50,6 +51,12 @@ crossterm = "0.28"
 
 # Async runtime for TUI events
 tokio = { version = "1", features = ["sync", "time", "rt-multi-thread"] }
+
+# Date/time
+chrono = "0.4"
+
+# Home directory
+dirs = "5"
 
 [dev-dependencies]
 assert_cmd = "2"

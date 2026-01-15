@@ -3,10 +3,15 @@
 pub mod agents;
 pub mod call;
 pub mod dashboard;
+pub mod generate;
 pub mod health;
 pub mod install;
 pub mod methods;
 pub mod new;
+pub mod skill;
+pub mod skill_export;
+pub mod skill_tap;
+pub mod skill_validate;
 pub mod start;
 pub mod status;
 pub mod stop;

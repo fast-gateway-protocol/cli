@@ -30,5 +30,149 @@
     "permission_mode": "bypassPermissions",
     "hook_event_name": "UserPromptSubmit",
     "prompt": "Create GitHub repos for dashboard and workflow crates"
+  },
+  {
+    "session_id": "0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "test the dashboard locally"
+  },
+  {
+    "session_id": "0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "Create a pull request for the TUI changes and then set a reminder for 10 minutes to check back."
+  },
+  {
+    "session_id": "0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "check if CI passed on PR 2"
+  },
+  {
+    "session_id": "0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "merge the TUI PR"
+  },
+  {
+    "session_id": "0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "How do I launch the terminal UI?"
+  },
+  {
+    "session_id": "0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "Last login: Wed Jan 14 19:47:20 on ttys023\nwolfgangschoenberger@Wolfgangs-MacBook-Pro fgp % fgp tui\nzsh: command not found: fgp\nwolfgangschoenberger@Wolfgangs-MacBook-Pro fgp % cd cli\nwolfgangschoenberger@Wolfgangs-MacBook-Pro cli % fgp tui\nzsh: command not found: fgp\nwolfgangschoenberger@Wolfgangs-MacBook-Pro cli %\n\n"
+  },
+  {
+    "session_id": "0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "install fgp globally"
+  },
+  {
+    "session_id": "b084daa3-6131-406b-a78c-8246feeb00fe",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/b084daa3-6131-406b-a78c-8246feeb00fe.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "<task-notification>\n<task-id>b0027bc</task-id>\n<output-file>/tmp/claude/-Users-wolfgangschoenberger-Projects-fgp/tasks/b0027bc.output</output-file>\n<status>completed</status>\n<summary>Background command \"Wait and check release workflows\" completed (exit code 0)</summary>\n</task-notification>\nRead the output file to retrieve the result: /tmp/claude/-Users-wolfgangschoenberger-Projects-fgp/tasks/b0027bc.output"
+  },
+  {
+    "session_id": "0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "start a service to test the tui"
+  },
+  {
+    "session_id": "0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "This is what I see. This is what I see. Does this look correct?"
+  },
+  {
+    "session_id": "0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "Okay, I pasted a screenshot of what it actually looks like as well as what I see when I try to start the browser via the TUI."
+  },
+  {
+    "session_id": "0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "test the tui fix now"
+  },
+  {
+    "session_id": "0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "it works, what should we build next"
+  },
+  {
+    "session_id": "0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/0c6dbfa3-3098-4071-8a4e-c5dd9f1118ae.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "plan",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "I want to eventually add pretty much all of these (except remote daemons), let's start going through the list - Let's plan out T0 and T1 first. I think we can do that all in one go. Please create a comprehensive plan. Once that's done, we can plan out service metrics and lastly, the plugin registry."
+  },
+  {
+    "session_id": "6be261ac-4a50-4c29-b5e1-a1edb3ce813d",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/6be261ac-4a50-4c29-b5e1-a1edb3ce813d.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "commit the codex detection fix"
+  },
+  {
+    "session_id": "6be261ac-4a50-4c29-b5e1-a1edb3ce813d",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/6be261ac-4a50-4c29-b5e1-a1edb3ce813d.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "plan",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "what about google's antigravity, as well as the gemini CLI? can we configure those too?"
+  },
+  {
+    "session_id": "c696a6ba-089c-47d9-95c7-3ba087b1e3a7",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/c696a6ba-089c-47d9-95c7-3ba087b1e3a7.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "commit these changes and push"
+  },
+  {
+    "session_id": "c696a6ba-089c-47d9-95c7-3ba087b1e3a7",
+    "transcript_path": "/Users/wolfgangschoenberger/.claude/projects/-Users-wolfgangschoenberger-Projects-fgp/c696a6ba-089c-47d9-95c7-3ba087b1e3a7.jsonl",
+    "cwd": "/Users/wolfgangschoenberger/Projects/fgp/cli",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "create a PR for these changes and set a reminder for me to check back in in 10 minutes"
   }
 ]
