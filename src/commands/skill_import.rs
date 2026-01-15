@@ -2439,11 +2439,31 @@ fn parse_windsurf(path: &Path, content: &str) -> Result<ImportedSkill> {
     // Windsurf may have frontmatter
     let (frontmatter, body) = extract_yaml_frontmatter(content)?;
 
-    // Parse frontmatter if present
+    // Parse frontmatter if present - full structure with capabilities and triggers
+    #[derive(Debug, Deserialize, Default)]
+    struct WindsurfCapability {
+        name: Option<String>,
+        #[serde(default)]
+        tools: Vec<String>,
+    }
+
+    #[derive(Debug, Deserialize, Default)]
+    struct WindsurfTriggers {
+        #[serde(default)]
+        keywords: Vec<String>,
+        #[serde(default)]
+        patterns: Vec<String>,
+    }
+
     #[derive(Debug, Deserialize, Default)]
     struct WindsurfFrontmatter {
         name: Option<String>,
+        version: Option<String>,
         description: Option<String>,
+        author: Option<String>,
+        #[serde(default)]
+        capabilities: Vec<WindsurfCapability>,
+        triggers: Option<WindsurfTriggers>,
     }
 
     let fm: WindsurfFrontmatter = if !frontmatter.is_empty() {
@@ -2463,6 +2483,14 @@ fn parse_windsurf(path: &Path, content: &str) -> Result<ImportedSkill> {
             .with_note("Inferred from path")
     };
 
+    // Extract version from frontmatter
+    let version = if let Some(v) = fm.version {
+        ImportedField::high(v, FieldSource::Frontmatter)
+    } else {
+        ImportedField::low("1.0.0".to_string(), FieldSource::Default)
+            .with_note("Default version - please update")
+    };
+
     // Extract description
     let description = if let Some(d) = fm.description {
         ImportedField::high(d, FieldSource::Frontmatter)
@@ -2479,18 +2507,82 @@ fn parse_windsurf(path: &Path, content: &str) -> Result<ImportedSkill> {
         }
     };
 
-    // Extract daemons from content patterns
-    let daemons = extract_daemons_from_tools(&[], &body);
+    // Extract author from frontmatter
+    let author = fm.author.map(|a| {
+        ImportedAuthor {
+            name: ImportedField::high(a, FieldSource::Frontmatter),
+            email: ImportedField::low(None, FieldSource::Default),
+            url: ImportedField::low(None, FieldSource::Default),
+        }
+    });
 
-    // Extract triggers
-    let triggers = extract_triggers(&[], &body);
+    // Extract daemons from capabilities in frontmatter
+    let mut daemons: Vec<ImportedDaemon> = Vec::new();
+
+    // First, collect tools from capabilities
+    let mut all_tools: Vec<String> = Vec::new();
+    for cap in &fm.capabilities {
+        all_tools.extend(cap.tools.iter().cloned());
+    }
+
+    // Parse tools into daemon.method pairs
+    if !all_tools.is_empty() {
+        let mut daemon_methods: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+
+        for tool in &all_tools {
+            if let Some((daemon, method)) = tool.split_once('.') {
+                daemon_methods
+                    .entry(daemon.to_string())
+                    .or_default()
+                    .push(method.to_string());
+            }
+        }
+
+        for (daemon_name, methods) in daemon_methods {
+            daemons.push(ImportedDaemon {
+                name: ImportedField::high(daemon_name, FieldSource::Frontmatter),
+                version: ImportedField::low(Some(">=1.0.0".to_string()), FieldSource::Default),
+                optional: ImportedField::low(false, FieldSource::Default),
+                methods: methods.into_iter()
+                    .map(|m| ImportedField::high(m, FieldSource::Frontmatter))
+                    .collect(),
+            });
+        }
+    }
+
+    // If no daemons from frontmatter, try extracting from content
+    if daemons.is_empty() {
+        daemons = extract_daemons_from_tools(&[], &body);
+    }
+
+    // Extract triggers from frontmatter or content
+    let triggers = if let Some(t) = fm.triggers {
+        let keywords: Vec<ImportedField<String>> = t.keywords.into_iter()
+            .map(|k| ImportedField::high(k, FieldSource::Frontmatter))
+            .collect();
+        let patterns: Vec<ImportedField<String>> = t.patterns.into_iter()
+            .map(|p| ImportedField::high(p, FieldSource::Frontmatter))
+            .collect();
+
+        // If we have triggers from frontmatter, use them
+        if !keywords.is_empty() || !patterns.is_empty() {
+            ImportedTriggers {
+                keywords,
+                patterns,
+                commands: Vec::new(),
+            }
+        } else {
+            extract_triggers(&[], &body)
+        }
+    } else {
+        extract_triggers(&[], &body)
+    };
 
     Ok(ImportedSkill {
         name,
-        version: ImportedField::low("1.0.0".to_string(), FieldSource::Default)
-            .with_note("Default version - please update"),
+        version,
         description,
-        author: None,
+        author,
         daemons,
         instructions_content: ImportedField::high(body, FieldSource::Content),
         triggers,
@@ -2971,10 +3063,22 @@ fn generate_skill_yaml(skill: &ImportedSkill) -> String {
     yaml.push('\n');
     yaml.push_str(&format!("description: {}\n", skill.description.value));
 
-    // Author (placeholder)
+    // Author
     yaml.push_str("\nauthor:\n");
-    yaml.push_str("  name: \"Unknown\"  # [*INCOMPLETE*] Add author name\n");
-    yaml.push_str("  # email: author@example.com\n");
+    if let Some(ref author) = skill.author {
+        yaml.push_str(&format!("  name: \"{}\"\n", author.name.value));
+        if author.name.confidence != Confidence::High {
+            yaml.push_str("  # [*LOW-CONFIDENCE*] Verify author\n");
+        }
+        if let Some(ref email) = author.email.value {
+            yaml.push_str(&format!("  email: {}\n", email));
+        } else {
+            yaml.push_str("  # email: author@example.com\n");
+        }
+    } else {
+        yaml.push_str("  name: \"Unknown\"  # [*INCOMPLETE*] Add author name\n");
+        yaml.push_str("  # email: author@example.com\n");
+    }
 
     // License
     yaml.push_str("\nlicense: MIT  # [*LOW-CONFIDENCE*] Verify license\n");
