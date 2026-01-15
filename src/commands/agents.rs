@@ -8,7 +8,11 @@ use std::path::Path;
 const AGENT_PATHS: &[(&str, &str, &str)] = &[
     ("Claude Code", "~/.claude/skills", "SKILL.md files"),
     ("Codex", "~/.codex/skills", "SKILL.md files"),
-    ("Gemini CLI", "~/.gemini/extensions", "Extension directories"),
+    (
+        "Gemini CLI",
+        "~/.gemini/extensions",
+        "Extension directories",
+    ),
     ("Antigravity", "~/.gemini/antigravity", "MCP config"),
     ("Cursor", "~/.cursor", ".mdc rules"),
     ("Windsurf", "~/.windsurf", "Workflow files"),
@@ -18,6 +22,13 @@ const AGENT_PATHS: &[(&str, &str, &str)] = &[
         "MCP config",
     ),
     ("Continue", "~/.continue", "YAML config"),
+    // Additional AI coding tools
+    ("Aider", "~/.aider.conf.yml", "YAML config"),
+    ("Zed AI", "~/.config/zed", "JSON settings"),
+    ("GitHub Copilot", "~/.config/github-copilot", "JSON config"),
+    ("Sourcegraph Cody", "~/.sourcegraph", "JSON config"),
+    ("Amazon Q", "~/.aws/amazonq", "YAML/JSON config"),
+    ("Opencode", "~/.config/opencode", "JSON config"),
 ];
 
 pub fn run() -> Result<()> {
