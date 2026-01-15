@@ -10,6 +10,7 @@ pub mod new;
 pub mod start;
 pub mod status;
 pub mod stop;
+pub mod tui;
 pub mod workflow;
 
 use std::path::PathBuf;

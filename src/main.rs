@@ -13,6 +13,7 @@
 //! ```
 
 mod commands;
+mod tui;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -122,6 +123,13 @@ enum Commands {
         open: bool,
     },
 
+    /// Interactive terminal dashboard
+    Tui {
+        /// Service polling interval in milliseconds
+        #[arg(short, long, default_value = "2000")]
+        poll: u64,
+    },
+
     /// Run or validate a workflow
     Workflow {
         #[command(subcommand)]
@@ -175,6 +183,7 @@ fn main() -> Result<()> {
         Commands::Methods { service } => commands::methods::run(&service),
         Commands::Health { service } => commands::health::run(&service),
         Commands::Dashboard { port, open } => commands::dashboard::run(port, open),
+        Commands::Tui { poll } => commands::tui::run(poll),
         Commands::Workflow { action } => match action {
             WorkflowAction::Run { file, verbose } => commands::workflow::run(&file, verbose),
             WorkflowAction::Validate { file } => commands::workflow::validate(&file),
