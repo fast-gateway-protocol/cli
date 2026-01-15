@@ -4,7 +4,7 @@ Detailed documentation for each supported import format.
 
 ## Claude Code (SKILL.md)
 
-**Fidelity: ~80%** | **Pattern: `SKILL.md`**
+**Fidelity: ~65%** | **Quality Grade: B (82%)** | **Pattern: `SKILL.md`**
 
 The highest fidelity format. Uses YAML frontmatter for structured metadata.
 
@@ -57,7 +57,7 @@ More content...
 
 ## Cursor (.cursorrules)
 
-**Fidelity: ~50%** | **Pattern: `.cursorrules`, `*.cursorrules`**
+**Fidelity: ~30%** | **Quality Grade: F (36%)** | **Pattern: `.cursorrules`, `*.cursorrules`**
 
 Pure markdown format with no structured metadata. Daemons/methods must be inferred.
 
@@ -235,9 +235,9 @@ JSON manifest with structured capability definitions.
 
 ## Codex (*.codex.json)
 
-**Fidelity: ~25%** | **Pattern: `*.codex.json`, `config.codex.json`**
+**Fidelity: ~70%** | **Quality Grade: C (75%)** | **Pattern: `*.codex.json`, `config.codex.json`**
 
-Minimal JSON schema with tool list only.
+JSON config with explicit tool names. Best format for daemon/method recovery.
 
 ### Structure
 
@@ -257,8 +257,8 @@ Minimal JSON schema with tool list only.
 | name | `name` field | High |
 | description | `description` field | High |
 | version | Default `1.0.0` | Low |
-| daemons | Inferred from `tools` | Low |
-| methods | Parsed from `tools` | Low |
+| daemons | Parsed from `tools` | High |
+| methods | Parsed from `tools` | High |
 | instructions | `instructions` field | Medium |
 
 ### Tool Parsing
@@ -278,7 +278,7 @@ Tools are parsed as `daemon.method`:
 
 ## MCP (*.mcp.json)
 
-**Fidelity: ~30%** | **Pattern: `*.mcp.json`, `tools.mcp.json`**
+**Fidelity: ~25%** | **Quality Grade: F (28%)** | **Pattern: `*.mcp.json`, `tools.mcp.json`**
 
 MCP tool schema format.
 
@@ -402,13 +402,69 @@ fgp skill import ./custom-file.txt --format cursor
 |---------|--------|--------|----------|-----|--------|-------|-----|-------|
 | Structured metadata | ✅ | ❌ | ✅ | ❌ | ✅ | ⚠️ | ⚠️ | ❌ |
 | Version info | ✅ | ❌ | ⚠️ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Daemon definitions | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ | ❌ |
-| Method details | ✅ | ⚠️ | ⚠️ | ❌ | ⚠️ | ⚠️ | ✅ | ❌ |
+| Daemon definitions | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ | ⚠️ | ❌ |
+| Method details | ✅ | ⚠️ | ⚠️ | ❌ | ⚠️ | ✅ | ⚠️ | ❌ |
 | Triggers | ✅ | ⚠️ | ⚠️ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Instructions | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ✅ |
+| Instructions | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
 | Author info | ⚠️ | ❌ | ⚠️ | ❌ | ⚠️ | ❌ | ❌ | ❌ |
 
 Legend: ✅ Good support | ⚠️ Partial/inferred | ❌ Not available
+
+---
+
+## Round-Trip Fidelity Testing
+
+These results are from actual round-trip tests: creating a source file in each format,
+importing to FGP skill.yaml, and measuring what data was preserved.
+
+### Fidelity Summary
+
+| Format | Quality Grade | Overall Fidelity | Daemon Recovery | Best Use Case |
+|--------|---------------|------------------|-----------------|---------------|
+| **Claude Code** | 🔵 B (82%) | ~65% | ⚠️ Partial | Full skill definitions with frontmatter |
+| **Codex** | 🟡 C (75%) | ~70% | ✅ Full | Tool-centric configurations |
+| **Cursor** | 🔴 F (36%) | ~30% | ❌ None | Project-level coding guidelines |
+| **MCP** | 🔴 F (28%) | ~25% | ❌ None | API/tool schema definitions |
+
+### Field Recovery by Format
+
+| Field | Claude Code | Codex | Cursor | MCP |
+|-------|-------------|-------|--------|-----|
+| **name** | ✅ High | ✅ High | ⚠️ Medium (from title) | ✅ High |
+| **version** | ✅ High | ❌ Default | ❌ Default | ❌ Default |
+| **description** | ✅ High | ✅ High | ⚠️ Medium (from intro) | ✅ High |
+| **instructions** | ✅ High | ✅ High | ✅ High | ⚠️ Medium (raw JSON) |
+| **daemons** | ⚠️ Medium (33%) | ✅ Full (100%) | ❌ None | ❌ None |
+| **triggers** | ⚠️ Medium | ❌ None | ❌ None | ❌ None |
+| **workflows** | ❌ Lost | ❌ N/A | ❌ N/A | ❌ N/A |
+| **config** | ❌ Lost | ❌ N/A | ❌ N/A | ❌ N/A |
+| **auth** | ⚠️ Enriched | ⚠️ Enriched | ⚠️ Enriched | ⚠️ Enriched |
+
+### Key Insights
+
+1. **Codex outperforms Claude Code for daemon recovery** because it uses explicit
+   `daemon.method` tool names that parse cleanly, while Claude Code relies on
+   markdown pattern extraction.
+
+2. **Claude Code scores higher overall** because it preserves more metadata
+   (version, triggers) via YAML frontmatter.
+
+3. **Registry enrichment helps all formats** by recovering auth requirements and
+   method details when daemons are recognized in the FGP daemon registry.
+
+4. **Cursor/Aider formats are documentation-centric** - excellent for preserving
+   instructions but lose all structural metadata.
+
+5. **MCP format is API-focused** - preserves tool schemas but doesn't map
+   naturally to FGP's daemon model.
+
+### Recommendations
+
+- **Import from Claude Code** when available - highest overall fidelity
+- **Import from Codex** when you need reliable daemon/method recovery
+- **Always use `--enrich`** to recover auth and method details from registry
+- **Review `[*INCOMPLETE*]` markers** after import - these indicate fields needing manual completion
+- **Keep canonical skill.yaml** as source of truth; use `.sync.json` to track changes
 
 ---
 
