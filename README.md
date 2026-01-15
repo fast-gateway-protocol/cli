@@ -1,6 +1,6 @@
 # fgp
 
-Command-line interface for [Fast Gateway Protocol (FGP)](https://github.com/wolfiesch/fgp) daemons.
+Command-line interface for [Fast Gateway Protocol (FGP)](https://github.com/fast-gateway-protocol) daemons.
 
 FGP is the universal package manager for AI agents. One command installs capabilities across Claude Code, Cursor, Windsurf, and other AI coding assistants.
 
@@ -13,7 +13,7 @@ cargo install fgp
 Or build from source:
 
 ```bash
-git clone https://github.com/wolfiesch/fgp-cli
+git clone https://github.com/fast-gateway-protocol/cli
 cd fgp-cli
 cargo install --path .
 ```
@@ -97,8 +97,8 @@ FGP Services
 
 ## Related Projects
 
-- [fgp](https://github.com/wolfiesch/fgp) - FGP Protocol Specification
-- [fgp-daemon](https://github.com/wolfiesch/fgp-daemon) - Rust SDK for building FGP daemons
+- [protocol](https://github.com/fast-gateway-protocol/protocol) - FGP Protocol Specification
+- [daemon](https://github.com/fast-gateway-protocol/daemon) - Rust SDK for building FGP daemons
 
 ## License
 
