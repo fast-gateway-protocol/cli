@@ -87,6 +87,10 @@ enum Commands {
         /// Service name (inferred from method if not provided)
         #[arg(short, long)]
         service: Option<String>,
+
+        /// Disable auto-start (fail if daemon is not running)
+        #[arg(long)]
+        no_auto_start: bool,
     },
 
     /// Install a package from local path
@@ -106,6 +110,42 @@ enum Commands {
         /// Service name
         service: String,
     },
+
+    /// Open the web dashboard
+    Dashboard {
+        /// Port to listen on
+        #[arg(short, long, default_value = "8765")]
+        port: u16,
+
+        /// Open browser automatically
+        #[arg(short, long)]
+        open: bool,
+    },
+
+    /// Run or validate a workflow
+    Workflow {
+        #[command(subcommand)]
+        action: WorkflowAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum WorkflowAction {
+    /// Run a workflow from YAML file
+    Run {
+        /// Path to workflow YAML file
+        file: String,
+
+        /// Show verbose output
+        #[arg(short, long)]
+        verbose: bool,
+    },
+
+    /// Validate a workflow file without running it
+    Validate {
+        /// Path to workflow YAML file
+        file: String,
+    },
 }
 
 fn main() -> Result<()> {
@@ -122,11 +162,16 @@ fn main() -> Result<()> {
         Commands::Start { service, foreground } => commands::start::run(&service, foreground),
         Commands::Stop { service } => commands::stop::run(&service),
         Commands::Status { verbose } => commands::status::run(verbose),
-        Commands::Call { method, params, service } => {
-            commands::call::run(&method, &params, service.as_deref())
+        Commands::Call { method, params, service, no_auto_start } => {
+            commands::call::run(&method, &params, service.as_deref(), no_auto_start)
         }
         Commands::Install { path } => commands::install::run(&path),
         Commands::Methods { service } => commands::methods::run(&service),
         Commands::Health { service } => commands::health::run(&service),
+        Commands::Dashboard { port, open } => commands::dashboard::run(port, open),
+        Commands::Workflow { action } => match action {
+            WorkflowAction::Run { file, verbose } => commands::workflow::run(&file, verbose),
+            WorkflowAction::Validate { file } => commands::workflow::validate(&file),
+        },
     }
 }

@@ -2,6 +2,7 @@
 
 pub mod agents;
 pub mod call;
+pub mod dashboard;
 pub mod health;
 pub mod install;
 pub mod methods;
@@ -9,6 +10,7 @@ pub mod new;
 pub mod start;
 pub mod status;
 pub mod stop;
+pub mod workflow;
 
 use std::path::PathBuf;
 

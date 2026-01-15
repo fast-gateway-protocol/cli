@@ -3,9 +3,7 @@
 use anyhow::{bail, Context, Result};
 use colored::Colorize;
 
-use super::service_socket_path;
-
-pub fn run(method: &str, params: &str, service_override: Option<&str>) -> Result<()> {
+pub fn run(method: &str, params: &str, service_override: Option<&str>, no_auto_start: bool) -> Result<()> {
     // Resolve service/socket and normalize the method we send over the wire.
     //
     // Preferred:
@@ -25,40 +23,45 @@ pub fn run(method: &str, params: &str, service_override: Option<&str>) -> Result
                     service
                 );
             }
-            (service, method.to_string())
+            (service.to_string(), method.to_string())
         } else {
             // Built-ins are un-namespaced; service methods get namespaced here.
             let wire_method = match method {
                 "health" | "methods" | "stop" | "bundle" => method.to_string(),
                 _ => format!("{}.{}", service, method),
             };
-            (service, wire_method)
+            (service.to_string(), wire_method)
         }
     } else {
         // Infer service from method name (e.g., "gmail.search" -> "gmail").
         // If method is not namespaced, we keep the legacy behavior of treating it as both
         // service and method (e.g., "echo" for the echo service).
         let service = method.split('.').next().unwrap_or(method);
-        (service, method.to_string())
+        (service.to_string(), method.to_string())
     };
-
-    let socket_path = service_socket_path(service);
-
-    if !socket_path.exists() {
-        bail!(
-            "Service '{}' is not running. Run 'fgp start {}' first.",
-            service,
-            service
-        );
-    }
 
     // Parse params as JSON
     let params_value: serde_json::Value = serde_json::from_str(params)
         .context("Invalid JSON in params. Use format: '{\"key\": \"value\"}'")?;
 
-    // Connect and call
-    let client = fgp_daemon::FgpClient::new(&socket_path)
-        .context("Failed to connect to daemon")?;
+    // Create client - with or without auto-start
+    let client = if no_auto_start {
+        // Explicit opt-out: fail if daemon is not running
+        let socket_path = fgp_daemon::service_socket_path(&service);
+        if !socket_path.exists() {
+            bail!(
+                "Service '{}' is not running. Run 'fgp start {}' first (or remove --no-auto-start).",
+                service,
+                service
+            );
+        }
+        fgp_daemon::FgpClient::new(&socket_path)
+            .context("Failed to connect to daemon")?
+    } else {
+        // Default: auto-start daemon if not running
+        fgp_daemon::FgpClient::for_service(&service)
+            .context("Failed to create client")?
+    };
 
     let start = std::time::Instant::now();
     let response = client.call(&wire_method, params_value)?;
